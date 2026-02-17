@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -13,10 +13,12 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuGroups = [
   {
@@ -54,7 +56,14 @@ const menuGroups = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { unreadCount } = useNotifications();
+  const { user, role, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -141,6 +150,25 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* User info + Logout */}
+      <div className="border-t border-sidebar-border p-3 space-y-2">
+        {!collapsed && user && (
+          <div className="px-3 py-2">
+            <p className="text-xs font-semibold text-foreground truncate">{user.email}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {role === 'admin' ? 'Administrador' : 'Corretor'}
+            </p>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="sidebar-item w-full text-destructive hover:bg-destructive/10"
+        >
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Sair</span>}
+        </button>
+      </div>
 
       {/* Collapse Button */}
       <button
