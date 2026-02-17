@@ -14,7 +14,227 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agendamentos: {
+        Row: {
+          cliente_nome: string
+          cliente_telefone: string | null
+          colaborador_id: string | null
+          created_at: string
+          data: string
+          duracao: string | null
+          horario: string
+          id: string
+          lead_id: string | null
+          observacoes: string | null
+          servico: string | null
+          status: string
+        }
+        Insert: {
+          cliente_nome: string
+          cliente_telefone?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          data: string
+          duracao?: string | null
+          horario: string
+          id?: string
+          lead_id?: string | null
+          observacoes?: string | null
+          servico?: string | null
+          status?: string
+        }
+        Update: {
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          colaborador_id?: string | null
+          created_at?: string
+          data?: string
+          duracao?: string | null
+          horario?: string
+          id?: string
+          lead_id?: string | null
+          observacoes?: string | null
+          servico?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agendamentos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atendimentos: {
+        Row: {
+          assunto: string
+          cliente_email: string | null
+          cliente_id: string | null
+          cliente_nome: string
+          cliente_telefone: string | null
+          colaborador: string | null
+          created_at: string
+          id: string
+          origem: string | null
+          prioridade: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assunto: string
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome: string
+          cliente_telefone?: string | null
+          colaborador?: string | null
+          created_at?: string
+          id?: string
+          origem?: string | null
+          prioridade?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assunto?: string
+          cliente_email?: string | null
+          cliente_id?: string | null
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          colaborador?: string | null
+          created_at?: string
+          id?: string
+          origem?: string | null
+          prioridade?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      colaboradores: {
+        Row: {
+          cargo: string | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          status: string
+          telefone: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          status?: string
+          telefone?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          status?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          email: string | null
+          id: string
+          is_paid: boolean | null
+          link_imovel_interesse: string | null
+          name: string
+          paid_value: number | null
+          phone: string | null
+          source: string | null
+          status: string
+          tags: string[] | null
+          ultima_mensagem: string | null
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_paid?: boolean | null
+          link_imovel_interesse?: string | null
+          name: string
+          paid_value?: number | null
+          phone?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[] | null
+          ultima_mensagem?: string | null
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_paid?: boolean | null
+          link_imovel_interesse?: string | null
+          name?: string
+          paid_value?: number | null
+          phone?: string | null
+          source?: string | null
+          status?: string
+          tags?: string[] | null
+          ultima_mensagem?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
+      mensagens: {
+        Row: {
+          atendimento_id: string
+          created_at: string
+          id: string
+          remetente: string
+          texto: string
+        }
+        Insert: {
+          atendimento_id: string
+          created_at?: string
+          id?: string
+          remetente?: string
+          texto: string
+        }
+        Update: {
+          atendimento_id?: string
+          created_at?: string
+          id?: string
+          remetente?: string
+          texto?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
