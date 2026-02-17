@@ -76,7 +76,7 @@ const mapRowToAtendimento = (row: AtendimentoRow, mensagens: MensagemRow[] = [])
     id: m.id,
     texto: m.texto,
     remetente: m.remetente as "cliente" | "atendente",
-    timestamp: new Date(m.timestamp)
+    timestamp: new Date(m.created_at)
   }))
 });
 

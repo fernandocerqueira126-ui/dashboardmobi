@@ -56,13 +56,13 @@ import { cn } from "@/lib/utils";
 import { useColaboradores, Colaborador } from "@/contexts/ColaboradoresContext";
 
 const roleOptions = [
-  "Analista",
-  "Especialista",
-  "Gerente",
+  "Corretor",
+  "Corretor Sênior",
+  "Gerente de Vendas",
   "Coordenador",
-  "Desenvolvedor",
-  "Designer",
-  "Assistente",
+  "Captador",
+  "Avaliador",
+  "Assistente Comercial",
   "Estagiário",
 ];
 
@@ -184,7 +184,7 @@ export default function Colaboradores() {
   if (isLoading && colaboradores.length === 0) {
     return (
       <div className="flex flex-col h-screen">
-        <Header title="Colaboradores" subtitle="Gerencie sua equipe" icon={<UsersRound className="w-5 h-5" />} />
+        <Header title="Corretores" subtitle="Gerencie sua equipe de corretores" icon={<UsersRound className="w-5 h-5" />} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -195,8 +195,8 @@ export default function Colaboradores() {
   return (
     <div className="flex flex-col h-screen">
       <Header
-        title="Colaboradores"
-        subtitle="Gerencie sua equipe"
+        title="Corretores"
+        subtitle="Gerencie sua equipe de corretores"
         icon={<UsersRound className="w-5 h-5" />}
       />
 
@@ -222,7 +222,7 @@ export default function Colaboradores() {
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar colaboradores..."
+              placeholder="Buscar corretores..."
               className="pl-9 bg-secondary border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -240,7 +240,7 @@ export default function Colaboradores() {
           </Select>
           <Button className="btn-primary gap-2 ml-auto" onClick={handleAddNew}>
             <Plus className="w-4 h-4" />
-            Novo Colaborador
+            Novo Corretor
           </Button>
         </div>
 
@@ -325,12 +325,12 @@ export default function Colaboradores() {
             <div className="col-span-full text-center py-12">
               <UsersRound className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
-                Nenhum colaborador encontrado
+                Nenhum corretor encontrado
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm || filterStatus !== "todos"
                   ? "Tente ajustar os filtros de busca."
-                  : "Adicione seu primeiro colaborador clicando no botão acima."}
+                  : "Adicione seu primeiro corretor clicando no botão acima."}
               </p>
             </div>
           )}
@@ -345,17 +345,17 @@ export default function Colaboradores() {
               {editingColaborador ? (
                 <>
                   <Pencil className="w-5 h-5 text-primary" />
-                  Editar Colaborador
+              Editar Corretor
                 </>
               ) : (
                 <>
                   <User className="w-5 h-5 text-primary" />
-                  Novo Colaborador
+                  Novo Corretor
                 </>
               )}
             </DialogTitle>
             <DialogDescription>
-              Preencha os dados do colaborador. Campos com * são obrigatórios.
+              Preencha os dados do corretor. Campos com * são obrigatórios.
             </DialogDescription>
           </DialogHeader>
 
@@ -364,7 +364,7 @@ export default function Colaboradores() {
               <Label htmlFor="nome">Nome Completo *</Label>
               <Input
                 id="nome"
-                placeholder="Nome do colaborador"
+                placeholder="Nome do corretor"
                 value={formData.nome}
                 onChange={(e) => handleInputChange("nome", e.target.value)}
               />
@@ -401,10 +401,10 @@ export default function Colaboradores() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cargo">Cargo *</Label>
+              <Label htmlFor="cargo">Função *</Label>
               <Select value={formData.cargo} onValueChange={(value) => handleInputChange("cargo", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o cargo" />
+                  <SelectValue placeholder="Selecione a função" />
                 </SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((role) => (
@@ -443,7 +443,7 @@ export default function Colaboradores() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir colaborador?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir corretor?</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir <strong>{colaboradorToDelete?.nome}</strong> da equipe?
             </AlertDialogDescription>

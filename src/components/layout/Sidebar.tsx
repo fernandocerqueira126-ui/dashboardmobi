@@ -29,15 +29,15 @@ const menuGroups = [
     title: "Gestão",
     items: [
       { icon: Users, label: "Leads CRM", path: "/leads" },
-      { icon: Calendar, label: "Agenda", path: "/agenda" },
+      { icon: Calendar, label: "Visitas Agendadas", path: "/agenda" },
       { icon: Headphones, label: "Atendimentos", path: "/atendimentos" },
     ]
   },
   {
     title: "Administrativo",
     items: [
-      { icon: UserCircle, label: "Clientes", path: "/clientes" },
-      { icon: UsersRound, label: "Colaboradores", path: "/colaboradores" },
+      { icon: UserCircle, label: "Proprietários", path: "/clientes" },
+      { icon: UsersRound, label: "Corretores", path: "/colaboradores" },
       { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
       { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
     ]
@@ -69,7 +69,7 @@ export function Sidebar() {
           <Zap className="w-5 h-5 text-primary-foreground" />
         </div>
         {!collapsed && (
-          <span className="font-bold text-lg text-foreground">Dashboard CRM</span>
+          <span className="font-bold text-lg text-foreground">Imobiliária Pro</span>
         )}
       </div>
 

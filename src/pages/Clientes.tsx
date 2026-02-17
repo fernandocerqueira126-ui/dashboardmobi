@@ -252,8 +252,8 @@ export default function Clientes() {
   return (
     <div className="flex flex-col h-screen">
       <Header
-        title="Clientes"
-        subtitle="Gerencie sua base de clientes"
+        title="Proprietários"
+        subtitle="Gerencie sua base de proprietários"
         icon={<UserCircle className="w-5 h-5" />}
       />
 
@@ -263,7 +263,7 @@ export default function Clientes() {
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar clientes..."
+              placeholder="Buscar proprietários..."
               className="pl-9 bg-secondary border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -294,12 +294,12 @@ export default function Clientes() {
             <DialogTrigger asChild>
               <Button className="btn-primary gap-2 ml-auto">
                 <Plus className="w-4 h-4" />
-                Novo Cliente
+                Novo Proprietário
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Novo Cliente</DialogTitle>
+                <DialogTitle>Novo Proprietário</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -367,11 +367,11 @@ export default function Clientes() {
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="card-metric p-4">
-            <p className="text-sm text-muted-foreground">Total de Clientes</p>
+            <p className="text-sm text-muted-foreground">Total de Proprietários</p>
             <p className="text-2xl font-bold text-foreground">{allClientes.length}</p>
           </div>
           <div className="card-metric p-4">
-            <p className="text-sm text-muted-foreground">Clientes Ativos</p>
+            <p className="text-sm text-muted-foreground">Proprietários Ativos</p>
             <p className="text-2xl font-bold text-success">
               {allClientes.filter((c) => c.status === "Ativo").length}
             </p>
@@ -389,9 +389,9 @@ export default function Clientes() {
           {filteredClientes.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <UserCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Nenhum cliente encontrado</p>
+              <p className="text-lg font-medium">Nenhum proprietário encontrado</p>
               <p className="text-sm mt-1">
-                Clientes aparecerão aqui quando leads forem movidos para "Fechado Ganho"
+                Proprietários aparecerão aqui quando leads forem movidos para "Fechado/Contrato"
               </p>
             </div>
           ) : (
