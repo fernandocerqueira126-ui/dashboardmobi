@@ -279,7 +279,7 @@ export default function Agenda() {
   if (isLoading && agendamentos.length === 0) {
     return (
       <div className="flex flex-col h-screen">
-        <Header title="Agenda" subtitle="Sincronizada com Supabase" icon={<Calendar className="w-5 h-5" />} />
+        <Header title="Visitas Agendadas" subtitle="Sincronizada com Supabase" icon={<Calendar className="w-5 h-5" />} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -290,8 +290,8 @@ export default function Agenda() {
   return (
     <div className="flex flex-col h-screen">
       <Header
-        title="Agenda"
-        subtitle="Gerencie os agendamentos da clínica"
+        title="Visitas Agendadas"
+        subtitle="Gerencie as visitas dos imóveis"
         icon={<Calendar className="w-5 h-5" />}
       />
 
@@ -324,7 +324,7 @@ export default function Agenda() {
                 <Users className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-medium text-foreground">Colaborador</h3>
+                <h3 className="font-medium text-foreground">Corretor</h3>
                 <p className="text-xs text-primary">{colaboradores.filter(c => c.status === 'ativo').length} ativos</p>
               </div>
             </div>
@@ -333,7 +333,7 @@ export default function Agenda() {
                 <SelectValue placeholder="Todos os colaboradores" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os colaboradores</SelectItem>
+                <SelectItem value="todos">Todos os corretores</SelectItem>
                 {colaboradores.filter(c => c.status === 'ativo').map((col) => (
                   <SelectItem key={col.id} value={col.id}>
                     {col.nome}

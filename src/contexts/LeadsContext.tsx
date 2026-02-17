@@ -24,10 +24,11 @@ export interface Lead {
 export const columnConfig = [
   { id: "novo", title: "Novo Lead", color: "blue" as const },
   { id: "contato", title: "Contato Inicial", color: "orange" as const },
-  { id: "proposta", title: "Proposta Enviada", color: "purple" as const },
-  { id: "negociacao", title: "Negociação", color: "yellow" as const },
-  { id: "ganho", title: "Fechado Ganho", color: "green" as const },
-  { id: "perdido", title: "Fechado Perdido", color: "red" as const },
+  { id: "visita", title: "Visita Marcada", color: "purple" as const },
+  { id: "proposta", title: "Proposta Enviada", color: "yellow" as const },
+  { id: "documentacao", title: "Documentação/Análise", color: "green" as const },
+  { id: "ganho", title: "Fechado/Contrato", color: "green" as const },
+  { id: "perdido", title: "Perdido", color: "red" as const },
 ];
 
 export const sourceOptions = [

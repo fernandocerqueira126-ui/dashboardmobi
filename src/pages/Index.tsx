@@ -92,7 +92,7 @@ const Index = () => {
     <div className="flex flex-col h-screen">
       <Header
         title="Dashboard"
-        subtitle="Visão geral do seu negócio"
+        subtitle="Visão geral da sua imobiliária"
         icon={<LayoutDashboard className="w-5 h-5" />}
       />
 
@@ -100,7 +100,7 @@ const Index = () => {
         {/* Featured Stats Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <StatCard
-            title="Lucro (Mês)"
+            title="Comissões Previstas"
             value={formatCurrency(financeiroStats.lucro)}
             subtitle={`Margem: ${financeiroStats.faturamento > 0
               ? Math.round((financeiroStats.lucro / financeiroStats.faturamento) * 100)
@@ -125,7 +125,7 @@ const Index = () => {
           />
           <div className="grid grid-cols-1 gap-4">
             <StatCard
-              title="Taxa de Conversão"
+              title="Conversão de Visitas"
               value={`${leadsStats.conversao}%`}
               icon={Target}
               iconColor="purple"
@@ -166,7 +166,7 @@ const Index = () => {
             isLoading={loading}
           />
           <StatCard
-            title="Agendamentos"
+            title="Visitas Agendadas"
             value={agendaStats.semana.toString()}
             subtitle="Esta semana"
             icon={Calendar}
@@ -238,7 +238,7 @@ const Index = () => {
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <Calendar className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-foreground">Próximos Agendamentos</h3>
+                <h3 className="font-bold text-foreground">Próximas Visitas</h3>
               </div>
               <Link
                 to="/agenda"
