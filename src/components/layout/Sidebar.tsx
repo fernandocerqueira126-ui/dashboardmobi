@@ -47,7 +47,7 @@ const menuGroups = [
   {
     title: "Sistema",
     items: [
-      { icon: Zap, label: "Automação n8n", path: "/automacao" },
+      { icon: Zap, label: "Automação", path: "/automacao" },
       { icon: Bell, label: "Notificações", path: "/notificacoes", showBadge: true },
     ]
   }
