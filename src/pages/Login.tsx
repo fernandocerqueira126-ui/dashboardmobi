@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Mail, Lock, Loader2, Building2 } from "lucide-react";
+import { Mail, Lock, Loader2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -26,7 +27,14 @@ export default function Login() {
     setIsLoading(false);
 
     if (error) {
-      toast.error("Credenciais inválidas. Tente novamente.");
+      const msg = error.message?.toLowerCase() || "";
+      if (msg.includes("email not confirmed")) {
+        toast.error("E-mail não confirmado. Verifique sua caixa de entrada.");
+      } else if (msg.includes("invalid login")) {
+        toast.error("E-mail ou senha incorretos.");
+      } else {
+        toast.error(error.message || "Erro ao fazer login.");
+      }
     } else {
       navigate("/");
     }
@@ -64,7 +72,29 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline"
+                  onClick={async () => {
+                    if (!email) {
+                      toast.error("Digite seu e-mail primeiro.");
+                      return;
+                    }
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (error) {
+                      toast.error("Erro ao enviar link. Tente novamente.");
+                    } else {
+                      toast.success("Link de redefinição enviado para seu e-mail!");
+                    }
+                  }}
+                >
+                  Esqueci a senha
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input

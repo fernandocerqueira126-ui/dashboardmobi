@@ -24,6 +24,7 @@ import Automacao from "./pages/Automacao";
 import Notificacoes from "./pages/Notificacoes";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/*"
               element={
