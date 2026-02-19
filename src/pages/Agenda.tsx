@@ -159,7 +159,7 @@ export default function Agenda() {
   // Obter agendamentos para um slot específico
   const getAgendamentosForSlot = (date: Date, time: string) => {
     return filteredAgendamentos.filter(
-      (ag) => isSameDay(ag.data, date) && ag.horario === time
+      (ag) => isSameDay(ag.data, date) && ag.horario.startsWith(time)
     );
   };
 
