@@ -90,8 +90,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchLeads = async () => {
-    setIsLoading(true);
+  const fetchLeads = async (showLoading = false) => {
+    if (showLoading) setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('leads')
@@ -103,14 +103,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       setLeads((data || []).map(mapRowToLead));
     } catch (error) {
       console.error("Erro ao buscar leads:", error);
-      toast.error("Erro ao carregar dados do banco.");
+      if (showLoading) toast.error("Erro ao carregar dados do banco.");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads(true);
 
     // Real-time integration
     const channel = supabase
@@ -127,8 +127,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
           if (payload.eventType === 'INSERT') {
             const newLead = mapRowToLead(payload.new as LeadRow);
-            setLeads((prev) => [newLead, ...prev]);
-            // Global notification handled in NotificationsContext
+            setLeads((prev) => {
+              if (prev.some(l => l.id === newLead.id)) return prev;
+              return [newLead, ...prev];
+            });
           } else if (payload.eventType === 'UPDATE') {
             const updatedLead = mapRowToLead(payload.new as LeadRow);
             const oldStatus = (payload.old as any).status;
@@ -137,7 +139,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
               prev.map((lead) => (lead.id === updatedLead.id ? updatedLead : lead))
             );
 
-            // Notify status change if it moved columns
             if (oldStatus && oldStatus !== updatedLead.status) {
               const column = columnConfig.find(c => c.id === updatedLead.status);
               toast.success(`Lead movido para ${column?.title || updatedLead.status}`);
@@ -149,8 +150,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
+    // Periodic refresh every 30s for sync guarantee
+    const interval = setInterval(() => {
+      fetchLeads();
+    }, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, []);
 
@@ -215,14 +222,19 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteLead = async (id: string) => {
+    // Optimistic update
+    setLeads((prev) => prev.filter((lead) => lead.id !== id));
     try {
       const { error } = await supabase
         .from('leads')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-      // State updated by real-time subscription
+      if (error) {
+        // Revert on error
+        await fetchLeads();
+        throw error;
+      }
       toast.success("Lead removido.");
     } catch (error) {
       console.error("Erro ao deletar lead:", error);

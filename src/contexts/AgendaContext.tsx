@@ -114,8 +114,14 @@ export function AgendaProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
+    // Periodic refresh every 30s for sync guarantee
+    const interval = setInterval(() => {
+      fetchAgendamentos();
+    }, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, []);
 
