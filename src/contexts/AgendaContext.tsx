@@ -46,13 +46,19 @@ interface AgendaContextType {
 
 const AgendaContext = createContext<AgendaContextType | undefined>(undefined);
 
+const normalizeHorario = (h: string) => {
+  // "15:00:00" -> "15:00"
+  const parts = h.split(":");
+  return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : h;
+};
+
 const mapRowToAgendamento = (item: any): Agendamento => ({
   id: item.id,
   clienteNome: item.cliente_nome,
   clienteTelefone: item.cliente_telefone || "",
   colaboradorId: item.colaborador_id,
   data: parseISO(item.data),
-  horario: item.horario,
+  horario: normalizeHorario(item.horario || ""),
   duracao: item.duracao || "60",
   servico: item.servico || "",
   observacoes: item.observacoes || "",
