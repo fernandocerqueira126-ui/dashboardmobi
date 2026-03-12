@@ -81,7 +81,7 @@ const mapRowToLead = (row: LeadRow): Lead => ({
   description: row.description || "",
   date: row.date,
   source: row.source === 'formulário' || !row.source ? "WhatsApp" : row.source,
-  status: row.status || "novo",
+  status: normalizeStatus(row.status || "novo"),
   isPaid: row.is_paid || false,
   tags: row.tags || [],
 });
