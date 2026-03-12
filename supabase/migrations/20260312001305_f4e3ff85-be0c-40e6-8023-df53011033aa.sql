@@ -1,0 +1,1 @@
+UPDATE public.leads SET status = 'visita' WHERE phone = '5521989732007' AND status NOT IN ('ganho', 'perdido');
