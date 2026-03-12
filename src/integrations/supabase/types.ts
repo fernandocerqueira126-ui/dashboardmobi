@@ -293,6 +293,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      lead_stage_order: { Args: { p_status: string }; Returns: number }
+      mover_lead_contato_inicial: {
+        Args: { p_phone: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "corretor"
