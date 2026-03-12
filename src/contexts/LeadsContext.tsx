@@ -70,6 +70,22 @@ const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
 
 type LeadRow = Database['public']['Tables']['leads']['Row'];
 
+// Normalize status: map display titles back to column IDs
+const normalizeStatus = (status: string): string => {
+  const titleToId = columnConfig.reduce((acc, col) => {
+    acc[col.title.toLowerCase()] = col.id;
+    return acc;
+  }, {} as Record<string, string>);
+  
+  const lower = status.toLowerCase();
+  // If it matches a title, return the id
+  if (titleToId[lower]) return titleToId[lower];
+  // If it already matches an id, return as-is
+  if (columnConfig.some(c => c.id === status)) return status;
+  // Default
+  return "novo";
+};
+
 // Helper function to map database row to UI Lead model
 const mapRowToLead = (row: LeadRow): Lead => ({
   id: row.id,
@@ -81,7 +97,7 @@ const mapRowToLead = (row: LeadRow): Lead => ({
   description: row.description || "",
   date: row.date,
   source: row.source === 'formulário' || !row.source ? "WhatsApp" : row.source,
-  status: row.status || "novo",
+  status: normalizeStatus(row.status || "novo"),
   isPaid: row.is_paid || false,
   tags: row.tags || [],
 });
