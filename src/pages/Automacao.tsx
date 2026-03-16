@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Header } from "@/components/layout/Header";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -42,15 +42,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Zap,
-  Webhook,
+  Webhook as WebhookIcon,
   Activity,
   CheckCircle,
   BarChart3,
   Plus,
   Settings,
-  Search,
-  Layout,
-  FileText,
   MoreVertical,
   Pencil,
   Trash2,
@@ -65,40 +62,45 @@ import {
   EyeOff,
   RefreshCw,
   XCircle,
+  Loader2,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, subDays, subHours, subMinutes } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Types
-interface Webhook {
+interface WebhookRow {
   id: string;
   nome: string;
   url: string;
   evento: string;
-  descricao?: string;
+  descricao: string | null;
   ativo: boolean;
-  criadoEm: string;
-  ultimaExecucao?: string;
-  totalEventos: number;
-  eventosSuccesso: number;
+  secret_key: string;
+  total_eventos: number;
+  eventos_sucesso: number;
+  ultima_execucao: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-interface EventoWebhook {
+interface EventoRow {
   id: string;
-  webhookId: string;
-  webhookNome: string;
+  webhook_id: string;
+  webhook_nome: string;
   evento: string;
-  payload: object;
-  status: "sucesso" | "falha";
-  statusCode?: number;
-  tempoResposta?: number;
-  dataHora: string;
-  erro?: string;
+  payload: Record<string, unknown>;
+  status: string;
+  status_code: number | null;
+  tempo_resposta: number | null;
+  erro: string | null;
+  created_at: string;
 }
 
-// Event types for triggers
+// Event types
 const eventosDisponiveis = [
   { value: "lead_whatsapp", label: "Entrada de Lead WhatsApp", descricao: "Quando um novo lead entra via WhatsApp" },
   { value: "lead_status_alterado", label: "Atualização de Status via Chatbot", descricao: "Quando o status do lead é atualizado pelo chatbot" },
@@ -110,131 +112,23 @@ const eventosDisponiveis = [
   { value: "corretor_adicionado", label: "Corretor Adicionado", descricao: "Quando um novo corretor é cadastrado" },
 ];
 
-// Tabs
-const tabs = [
-  { icon: Webhook, label: "Webhooks", active: true },
-  { icon: Zap, label: "Workflows", badge: "Em Breve" },
-  { icon: Layout, label: "Templates", badge: "Em Breve" },
-  { icon: BarChart3, label: "Analytics", badge: "Em Breve" },
-  { icon: Search, label: "Buscar", badge: "Em Breve" },
-  { icon: FileText, label: "Dashboard" },
-];
-
-// Initial mock data
-const initialWebhooks: Webhook[] = [
-  {
-    id: "1",
-    nome: "Entrada de Lead WhatsApp",
-    url: "https://n8n.meudominio.com/webhook/abc123-lead-whatsapp",
-    evento: "lead_whatsapp",
-    descricao: "Recebe leads automaticamente do WhatsApp via chatbot",
-    ativo: true,
-    criadoEm: format(subDays(new Date(), 15), "yyyy-MM-dd"),
-    ultimaExecucao: format(subHours(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss"),
-    totalEventos: 45,
-    eventosSuccesso: 43,
-  },
-  {
-    id: "2",
-    nome: "Atualização de Status via Chatbot",
-    url: "https://n8n.meudominio.com/webhook/def456-status-update",
-    evento: "lead_status_alterado",
-    descricao: "Atualiza o status do lead quando o chatbot identifica mudanças",
-    ativo: true,
-    criadoEm: format(subDays(new Date(), 10), "yyyy-MM-dd"),
-    ultimaExecucao: format(subDays(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss"),
-    totalEventos: 12,
-    eventosSuccesso: 12,
-  },
-  {
-    id: "3",
-    nome: "Visita Agendada - Google Calendar",
-    url: "https://n8n.meudominio.com/webhook/ghi789-visita-sync",
-    evento: "visita_agendada",
-    descricao: "Sincroniza visitas agendadas com Google Calendar",
-    ativo: false,
-    criadoEm: format(subDays(new Date(), 5), "yyyy-MM-dd"),
-    ultimaExecucao: format(subDays(new Date(), 3), "yyyy-MM-dd'T'HH:mm:ss"),
-    totalEventos: 8,
-    eventosSuccesso: 6,
-  },
-];
-
-const initialEventos: EventoWebhook[] = [
-  {
-    id: "e1",
-    webhookId: "1",
-    webhookNome: "Entrada de Lead WhatsApp",
-    evento: "lead_whatsapp",
-    payload: { leadId: "123", nome: "João Silva", whatsapp: "(11) 99999-0001" },
-    status: "sucesso",
-    statusCode: 200,
-    tempoResposta: 245,
-    dataHora: format(subMinutes(new Date(), 15), "yyyy-MM-dd'T'HH:mm:ss"),
-  },
-  {
-    id: "e2",
-    webhookId: "1",
-    webhookNome: "Entrada de Lead WhatsApp",
-    evento: "lead_whatsapp",
-    payload: { leadId: "124", nome: "Maria Costa", whatsapp: "(21) 98888-0002" },
-    status: "sucesso",
-    statusCode: 200,
-    tempoResposta: 189,
-    dataHora: format(subHours(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss"),
-  },
-  {
-    id: "e3",
-    webhookId: "2",
-    webhookNome: "Atualização de Status via Chatbot",
-    evento: "lead_status_alterado",
-    payload: { leadId: "120", novoStatus: "visita", imovelRef: "APT-045" },
-    status: "sucesso",
-    statusCode: 200,
-    tempoResposta: 312,
-    dataHora: format(subDays(new Date(), 1), "yyyy-MM-dd'T'HH:mm:ss"),
-  },
-  {
-    id: "e4",
-    webhookId: "3",
-    webhookNome: "Visita Agendada - Google Calendar",
-    evento: "visita_agendada",
-    payload: { visitaId: "V88", data: "2026-02-20", hora: "14:00", imovel: "Rua das Flores, 120" },
-    status: "falha",
-    statusCode: 500,
-    tempoResposta: 1520,
-    dataHora: format(subDays(new Date(), 3), "yyyy-MM-dd'T'HH:mm:ss"),
-    erro: "Timeout na conexão com Google Calendar API",
-  },
-  {
-    id: "e5",
-    webhookId: "1",
-    webhookNome: "Entrada de Lead WhatsApp",
-    evento: "lead_whatsapp",
-    payload: { leadId: "125", nome: "Pedro Santos", whatsapp: "(11) 97777-0003" },
-    status: "falha",
-    statusCode: 503,
-    tempoResposta: 5000,
-    dataHora: format(subDays(new Date(), 2), "yyyy-MM-dd'T'HH:mm:ss"),
-    erro: "Service Unavailable - n8n instance offline",
-  },
-];
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || "jscendxyylrjyrynkwmr";
 
 export default function Automacao() {
   const { addNotification } = useNotifications();
-  
-  // State
-  const [webhooks, setWebhooks] = useState<Webhook[]>(initialWebhooks);
-  const [eventos, setEventos] = useState<EventoWebhook[]>(initialEventos);
+
+  const [webhooks, setWebhooks] = useState<WebhookRow[]>([]);
+  const [eventos, setEventos] = useState<EventoRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [selectedWebhook, setSelectedWebhook] = useState<Webhook | null>(null);
-  const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null);
+  const [selectedWebhook, setSelectedWebhook] = useState<WebhookRow | null>(null);
+  const [webhookToDelete, setWebhookToDelete] = useState<WebhookRow | null>(null);
   const [showUrl, setShowUrl] = useState<Record<string, boolean>>({});
   const [testingWebhook, setTestingWebhook] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     nome: "",
     url: "",
@@ -243,14 +137,29 @@ export default function Automacao() {
     ativo: true,
   });
 
+  // Fetch data
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const [webhooksRes, eventosRes] = await Promise.all([
+      (supabase as any).from("webhooks").select("*").order("created_at", { ascending: false }),
+      (supabase as any).from("webhook_eventos").select("*").order("created_at", { ascending: false }).limit(50),
+    ]);
+    if (webhooksRes.data) setWebhooks(webhooksRes.data as WebhookRow[]);
+    if (eventosRes.data) setEventos(eventosRes.data as EventoRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   // Stats
   const stats = useMemo(() => {
     const hoje = format(new Date(), "yyyy-MM-dd");
-    const eventosHoje = eventos.filter((e) => e.dataHora.startsWith(hoje));
+    const eventosHoje = eventos.filter((e) => e.created_at.startsWith(hoje));
     const totalEventos = eventos.length;
     const eventosSuccesso = eventos.filter((e) => e.status === "sucesso").length;
     const taxaSucesso = totalEventos > 0 ? Math.round((eventosSuccesso / totalEventos) * 100) : 0;
-
     return {
       totalWebhooks: webhooks.length,
       eventosHoje: eventosHoje.length,
@@ -259,21 +168,23 @@ export default function Automacao() {
     };
   }, [webhooks, eventos]);
 
-  // Get event label
   const getEventoLabel = (value: string) => {
-    const evento = eventosDisponiveis.find((e) => e.value === value);
-    return evento?.label || value;
+    return eventosDisponiveis.find((e) => e.value === value)?.label || value;
   };
 
-  // Open modal for new webhook
+  const getReceiverUrl = (webhookId: string) => {
+    return `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/webhook-receiver/${webhookId}`;
+  };
+
+  // New webhook
   const handleNewWebhook = () => {
     setSelectedWebhook(null);
     setFormData({ nome: "", url: "", evento: "", descricao: "", ativo: true });
     setIsModalOpen(true);
   };
 
-  // Open modal for editing
-  const handleEditWebhook = (webhook: Webhook) => {
+  // Edit webhook
+  const handleEditWebhook = (webhook: WebhookRow) => {
     setSelectedWebhook(webhook);
     setFormData({
       nome: webhook.nome,
@@ -286,140 +197,187 @@ export default function Automacao() {
   };
 
   // Save webhook
-  const handleSaveWebhook = () => {
+  const handleSaveWebhook = async () => {
     if (!formData.nome || !formData.url || !formData.evento) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
+    // Basic URL validation
+    try {
+      new URL(formData.url);
+    } catch {
+      toast.error("URL inválida. Insira uma URL válida do n8n.");
+      return;
+    }
+
+    setSaving(true);
+
     if (selectedWebhook) {
-      // Update existing
-      setWebhooks((prev) =>
-        prev.map((w) =>
-          w.id === selectedWebhook.id
-            ? { ...w, ...formData }
-            : w
-        )
-      );
+      const { error } = await (supabase as any)
+        .from("webhooks")
+        .update({
+          nome: formData.nome,
+          url: formData.url,
+          evento: formData.evento,
+          descricao: formData.descricao || null,
+          ativo: formData.ativo,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedWebhook.id);
+
+      if (error) {
+        toast.error("Erro ao atualizar webhook");
+        setSaving(false);
+        return;
+      }
       toast.success("Webhook atualizado com sucesso!");
     } else {
-      // Create new
-      const newWebhook: Webhook = {
-        id: Date.now().toString(),
+      const { error } = await (supabase as any).from("webhooks").insert({
         nome: formData.nome,
         url: formData.url,
         evento: formData.evento,
-        descricao: formData.descricao,
+        descricao: formData.descricao || null,
         ativo: formData.ativo,
-        criadoEm: format(new Date(), "yyyy-MM-dd"),
-        totalEventos: 0,
-        eventosSuccesso: 0,
-      };
-      setWebhooks((prev) => [...prev, newWebhook]);
+      });
+
+      if (error) {
+        toast.error("Erro ao criar webhook");
+        setSaving(false);
+        return;
+      }
       toast.success("Webhook criado com sucesso!");
-      
-      // Add notification for new webhook
       addNotification({
         type: "webhook",
         title: "Novo Webhook Configurado",
         message: `${formData.nome} foi criado e está ${formData.ativo ? "ativo" : "inativo"}`,
         link: "/automacao",
-        metadata: { webhookId: newWebhook.id, evento: formData.evento },
+        metadata: { evento: formData.evento },
       });
     }
+
+    setSaving(false);
     setIsModalOpen(false);
+    fetchData();
   };
 
-  // Toggle webhook active status
-  const handleToggleWebhook = (webhook: Webhook) => {
-    setWebhooks((prev) =>
-      prev.map((w) =>
-        w.id === webhook.id ? { ...w, ativo: !w.ativo } : w
-      )
-    );
+  // Toggle active
+  const handleToggleWebhook = async (webhook: WebhookRow) => {
+    const { error } = await (supabase as any)
+      .from("webhooks")
+      .update({ ativo: !webhook.ativo, updated_at: new Date().toISOString() })
+      .eq("id", webhook.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar webhook");
+      return;
+    }
     toast.success(webhook.ativo ? "Webhook desativado" : "Webhook ativado");
+    fetchData();
   };
 
   // Delete webhook
-  const handleDeleteWebhook = () => {
+  const handleDeleteWebhook = async () => {
     if (!webhookToDelete) return;
-    setWebhooks((prev) => prev.filter((w) => w.id !== webhookToDelete.id));
-    setEventos((prev) => prev.filter((e) => e.webhookId !== webhookToDelete.id));
+    const { error } = await (supabase as any).from("webhooks").delete().eq("id", webhookToDelete.id);
+    if (error) {
+      toast.error("Erro ao excluir webhook");
+      return;
+    }
     toast.success("Webhook excluído com sucesso!");
     setIsDeleteDialogOpen(false);
     setWebhookToDelete(null);
+    fetchData();
   };
 
-  // Test webhook
-  const handleTestWebhook = async (webhook: Webhook) => {
+  // Test webhook - sends a real POST to the n8n URL
+  const handleTestWebhook = async (webhook: WebhookRow) => {
     setTestingWebhook(webhook.id);
-    
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    const isSuccess = Math.random() > 0.2; // 80% success rate for demo
-    
-    const newEvento: EventoWebhook = {
-      id: `test-${Date.now()}`,
-      webhookId: webhook.id,
-      webhookNome: webhook.nome,
-      evento: webhook.evento,
-      payload: { test: true, timestamp: new Date().toISOString() },
-      status: isSuccess ? "sucesso" : "falha",
-      statusCode: isSuccess ? 200 : 500,
-      tempoResposta: Math.floor(Math.random() * 500) + 100,
-      dataHora: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
-      erro: isSuccess ? undefined : "Teste falhou - verifique a URL do webhook",
-    };
+    const startTime = Date.now();
 
-    setEventos((prev) => [newEvento, ...prev]);
-    setWebhooks((prev) =>
-      prev.map((w) =>
-        w.id === webhook.id
-          ? {
-              ...w,
-              totalEventos: w.totalEventos + 1,
-              eventosSuccesso: isSuccess ? w.eventosSuccesso + 1 : w.eventosSuccesso,
-              ultimaExecucao: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
-            }
-          : w
-      )
-    );
+    try {
+      const testPayload = {
+        test: true,
+        timestamp: new Date().toISOString(),
+        webhook_nome: webhook.nome,
+        evento: webhook.evento,
+      };
 
-    if (isSuccess) {
-      toast.success("Teste enviado com sucesso!", {
-        description: `Resposta: 200 OK em ${newEvento.tempoResposta}ms`,
+      const response = await fetch(webhook.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(testPayload),
+        signal: AbortSignal.timeout(10000),
       });
-      addNotification({
-        type: "webhook",
-        title: "Webhook Executado",
-        message: `${webhook.nome} disparou com sucesso (200 OK)`,
-        link: "/automacao",
-        metadata: { webhookId: webhook.id, status: "sucesso", statusCode: 200 },
+
+      const tempoResposta = Date.now() - startTime;
+      const isSuccess = response.ok;
+
+      // Log event
+      await (supabase as any).from("webhook_eventos").insert({
+        webhook_id: webhook.id,
+        webhook_nome: webhook.nome,
+        evento: webhook.evento,
+        payload: testPayload as unknown as Record<string, unknown>,
+        status: isSuccess ? "sucesso" : "falha",
+        status_code: response.status,
+        tempo_resposta: tempoResposta,
+        erro: isSuccess ? null : `HTTP ${response.status} - ${response.statusText}`,
       });
-    } else {
+
+      // Update stats
+      await (supabase as any)
+        .from("webhooks")
+        .update({
+          total_eventos: webhook.total_eventos + 1,
+          eventos_sucesso: isSuccess ? webhook.eventos_sucesso + 1 : webhook.eventos_sucesso,
+          ultima_execucao: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", webhook.id);
+
+      if (isSuccess) {
+        toast.success("Teste enviado com sucesso!", {
+          description: `Resposta: ${response.status} em ${tempoResposta}ms`,
+        });
+      } else {
+        toast.error("Falha no teste do webhook", {
+          description: `HTTP ${response.status} - Verifique a URL`,
+        });
+      }
+    } catch (err: unknown) {
+      const tempoResposta = Date.now() - startTime;
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
+
+      await (supabase as any).from("webhook_eventos").insert({
+        webhook_id: webhook.id,
+        webhook_nome: webhook.nome,
+        evento: webhook.evento,
+        payload: { test: true },
+        status: "falha",
+        status_code: 0,
+        tempo_resposta: tempoResposta,
+        erro: errorMessage,
+      });
+
       toast.error("Falha no teste do webhook", {
-        description: "Verifique a URL e tente novamente",
-      });
-      addNotification({
-        type: "webhook",
-        title: "Falha no Webhook",
-        message: `${webhook.nome} falhou (${newEvento.statusCode})`,
-        link: "/automacao",
-        metadata: { webhookId: webhook.id, status: "falha", statusCode: newEvento.statusCode },
+        description: errorMessage.includes("timeout")
+          ? "Timeout - o n8n não respondeu em 10s"
+          : "Verifique a URL e tente novamente",
       });
     }
 
     setTestingWebhook(null);
+    fetchData();
   };
 
-  // View history for a webhook
-  const handleViewHistory = (webhook: Webhook) => {
+  // View history
+  const handleViewHistory = (webhook: WebhookRow) => {
     setSelectedWebhook(webhook);
     setIsHistoryModalOpen(true);
   };
 
-  // Copy URL to clipboard
+  // Copy URL
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success("URL copiada!");
@@ -430,49 +388,61 @@ export default function Automacao() {
     setShowUrl((prev) => ({ ...prev, [webhookId]: !prev[webhookId] }));
   };
 
-  // Format URL for display (masked)
+  // Format URL masked
   const formatUrl = (url: string, show: boolean) => {
     if (show) return url;
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.host}/webhook/****...`;
+    try {
+      const urlObj = new URL(url);
+      return `${urlObj.protocol}//${urlObj.host}/webhook/****...`;
+    } catch {
+      return "****";
+    }
   };
 
-  // Get webhook history
+  // Webhook history
   const webhookHistory = selectedWebhook
-    ? eventos.filter((e) => e.webhookId === selectedWebhook.id)
+    ? eventos.filter((e) => e.webhook_id === selectedWebhook.id)
     : [];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen">
+        <Header
+          title="Automação n8n"
+          subtitle="Configure webhooks para integração com n8n"
+          icon={<Zap className="w-5 h-5" />}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen">
       <Header
         title="Automação n8n"
-        subtitle="Configure webhooks para enviar eventos do CRM para n8n"
+        subtitle="Configure webhooks para integração com n8n"
         icon={<Zap className="w-5 h-5" />}
       />
 
       <div className="flex-1 overflow-auto p-6">
-        {/* Tabs */}
-        <div className="card-metric mb-6">
-          <div className="flex items-center gap-4 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.label}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
-                  tab.active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                )}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-                {tab.badge && (
-                  <span className="bg-secondary text-xs px-2 py-0.5 rounded-full">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
+        {/* Info Banner */}
+        <div className="card-metric mb-6 border-primary/30 bg-primary/5">
+          <div className="flex items-start gap-3">
+            <div className="stat-icon stat-icon-blue shrink-0">
+              <Link2 className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Como funciona a integração</h3>
+              <p className="text-sm text-muted-foreground mb-2">
+                1. Crie um webhook abaixo com a <strong>URL do n8n</strong> (para enviar dados ao n8n) ou use a <strong>URL de recebimento</strong> (para o n8n enviar dados para o CRM).
+              </p>
+              <p className="text-sm text-muted-foreground">
+                2. No n8n, configure o nó <strong>Webhook</strong> com a URL de recebimento abaixo, ou use <strong>HTTP Request</strong> para enviar dados para a URL do n8n cadastrada.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -484,7 +454,7 @@ export default function Automacao() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">Configurações de Webhook</h2>
-              <p className="text-sm text-muted-foreground">Configure webhooks para enviar eventos do CRM para n8n</p>
+              <p className="text-sm text-muted-foreground">Gerencie seus webhooks de integração com n8n</p>
             </div>
           </div>
           <Button className="btn-primary gap-2" onClick={handleNewWebhook}>
@@ -495,30 +465,10 @@ export default function Automacao() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard
-            title="Webhooks"
-            value={stats.totalWebhooks.toString()}
-            icon={Webhook}
-            iconColor="blue"
-          />
-          <StatCard
-            title="Hoje"
-            value={stats.eventosHoje.toString()}
-            icon={Activity}
-            iconColor="yellow"
-          />
-          <StatCard
-            title="Taxa Sucesso"
-            value={`${stats.taxaSucesso}%`}
-            icon={CheckCircle}
-            iconColor="purple"
-          />
-          <StatCard
-            title="Total Eventos"
-            value={stats.totalEventos.toString()}
-            icon={BarChart3}
-            iconColor="green"
-          />
+          <StatCard title="Webhooks" value={stats.totalWebhooks.toString()} icon={WebhookIcon} iconColor="blue" />
+          <StatCard title="Hoje" value={stats.eventosHoje.toString()} icon={Activity} iconColor="yellow" />
+          <StatCard title="Taxa Sucesso" value={`${stats.taxaSucesso}%`} icon={CheckCircle} iconColor="purple" />
+          <StatCard title="Total Eventos" value={stats.totalEventos.toString()} icon={BarChart3} iconColor="green" />
         </div>
 
         {/* Webhooks List */}
@@ -528,9 +478,7 @@ export default function Automacao() {
               <Settings className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-foreground">Webhooks Configurados</h3>
-            <Badge variant="secondary" className="ml-2">
-              {webhooks.length}
-            </Badge>
+            <Badge variant="secondary" className="ml-2">{webhooks.length}</Badge>
           </div>
 
           {webhooks.length === 0 ? (
@@ -540,7 +488,7 @@ export default function Automacao() {
               </div>
               <p className="text-lg font-medium text-foreground mb-2">Nenhum webhook configurado</p>
               <p className="text-sm text-muted-foreground text-center mb-4">
-                Configure webhooks para enviar eventos do CRM para n8n automaticamente
+                Configure webhooks para integrar o CRM com n8n
               </p>
               <Button className="btn-primary gap-2" onClick={handleNewWebhook}>
                 <Plus className="w-4 h-4" />
@@ -571,45 +519,47 @@ export default function Automacao() {
                       {webhook.descricao && (
                         <p className="text-sm text-muted-foreground mb-2">{webhook.descricao}</p>
                       )}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
-                            {formatUrl(webhook.url, showUrl[webhook.id] || false)}
-                          </code>
-                          <button
-                            onClick={() => toggleUrlVisibility(webhook.id)}
-                            className="p-1 hover:bg-muted rounded"
-                          >
-                            {showUrl[webhook.id] ? (
-                              <EyeOff className="w-3 h-3" />
-                            ) : (
-                              <Eye className="w-3 h-3" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleCopyUrl(webhook.url)}
-                            className="p-1 hover:bg-muted rounded"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                        </div>
+
+                      {/* n8n URL */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">n8n URL:</span>
+                        <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
+                          {formatUrl(webhook.url, showUrl[webhook.id] || false)}
+                        </code>
+                        <button onClick={() => toggleUrlVisibility(webhook.id)} className="p-1 hover:bg-muted rounded">
+                          {showUrl[webhook.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                        <button onClick={() => handleCopyUrl(webhook.url)} className="p-1 hover:bg-muted rounded">
+                          <Copy className="w-3 h-3" />
+                        </button>
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+
+                      {/* Receiver URL */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-success">Receber:</span>
+                        <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs truncate max-w-md">
+                          {getReceiverUrl(webhook.id)}
+                        </code>
+                        <button onClick={() => handleCopyUrl(getReceiverUrl(webhook.id))} className="p-1 hover:bg-muted rounded">
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Activity className="w-3 h-3" />
-                          {webhook.totalEventos} eventos
+                          {webhook.total_eventos} eventos
                         </span>
                         <span className="flex items-center gap-1">
                           <CheckCircle className="w-3 h-3 text-green-500" />
-                          {webhook.totalEventos > 0
-                            ? Math.round((webhook.eventosSuccesso / webhook.totalEventos) * 100)
-                            : 0}
-                          % sucesso
+                          {webhook.total_eventos > 0
+                            ? Math.round((webhook.eventos_sucesso / webhook.total_eventos) * 100)
+                            : 0}% sucesso
                         </span>
-                        {webhook.ultimaExecucao && (
+                        {webhook.ultima_execucao && (
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            Última: {format(new Date(webhook.ultimaExecucao), "dd/MM HH:mm", { locale: ptBR })}
+                            Última: {format(new Date(webhook.ultima_execucao), "dd/MM HH:mm", { locale: ptBR })}
                           </span>
                         )}
                       </div>
@@ -648,11 +598,9 @@ export default function Automacao() {
                             <Power className="w-4 h-4 mr-2" />
                             {webhook.ativo ? "Desativar" : "Ativar"}
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => window.open(webhook.url, "_blank")}
-                          >
+                          <DropdownMenuItem onClick={() => window.open(webhook.url, "_blank")}>
                             <ExternalLink className="w-4 h-4 mr-2" />
-                            Abrir URL
+                            Abrir URL n8n
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -677,29 +625,31 @@ export default function Automacao() {
 
         {/* Recent Events */}
         <div className="card-metric">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="stat-icon stat-icon-green">
-              <Activity className="w-5 h-5" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="stat-icon stat-icon-green">
+                <Activity className="w-5 h-5" />
+              </div>
+              <h3 className="font-semibold text-foreground">Eventos Recentes</h3>
+              <Badge variant="secondary" className="ml-2">{eventos.length}</Badge>
             </div>
-            <h3 className="font-semibold text-foreground">Eventos Recentes</h3>
-            <Badge variant="secondary" className="ml-2">
-              {eventos.length}
-            </Badge>
+            <Button variant="ghost" size="sm" onClick={fetchData} className="gap-1">
+              <RefreshCw className="w-3 h-3" />
+              Atualizar
+            </Button>
           </div>
 
           {eventos.length === 0 ? (
             <div className="h-32 flex flex-col items-center justify-center">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Activity className="w-5 h-5" />
-              </div>
-              <p className="text-sm text-muted-foreground">Nenhum evento disparado ainda</p>
+              <Activity className="w-5 h-5 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhum evento registrado ainda</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Os eventos aparecerão aqui quando webhooks forem disparados
+                Os eventos aparecerão aqui quando webhooks receberem dados
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {eventos.slice(0, 10).map((evento) => (
+              {eventos.slice(0, 15).map((evento) => (
                 <div
                   key={evento.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border"
@@ -712,7 +662,7 @@ export default function Automacao() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-foreground truncate">
-                        {evento.webhookNome}
+                        {evento.webhook_nome}
                       </span>
                       <Badge variant="outline" className="text-xs">
                         {getEventoLabel(evento.evento)}
@@ -724,20 +674,15 @@ export default function Automacao() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {evento.statusCode && (
-                        <Badge
-                          variant={evento.status === "sucesso" ? "default" : "destructive"}
-                          className="text-xs"
-                        >
-                          {evento.statusCode}
+                      {evento.status_code != null && evento.status_code > 0 && (
+                        <Badge variant={evento.status === "sucesso" ? "default" : "destructive"} className="text-xs">
+                          {evento.status_code}
                         </Badge>
                       )}
-                      {evento.tempoResposta && (
-                        <span>{evento.tempoResposta}ms</span>
-                      )}
+                      {evento.tempo_resposta != null && <span>{evento.tempo_resposta}ms</span>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(evento.dataHora), "dd/MM HH:mm", { locale: ptBR })}
+                      {format(new Date(evento.created_at), "dd/MM HH:mm", { locale: ptBR })}
                     </p>
                   </div>
                 </div>
@@ -751,11 +696,9 @@ export default function Automacao() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              {selectedWebhook ? "Editar Webhook" : "Novo Webhook"}
-            </DialogTitle>
+            <DialogTitle>{selectedWebhook ? "Editar Webhook" : "Novo Webhook"}</DialogTitle>
             <DialogDescription>
-              Configure um webhook para enviar eventos do CRM para o n8n
+              Configure um webhook para integrar o CRM com o n8n
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -763,7 +706,7 @@ export default function Automacao() {
               <Label htmlFor="nome">Nome do Webhook *</Label>
               <Input
                 id="nome"
-                placeholder="Ex: Novo Lead - Notificação"
+                placeholder="Ex: Novo Lead - WhatsApp"
                 value={formData.nome}
                 onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
               />
@@ -777,7 +720,7 @@ export default function Automacao() {
                 onChange={(e) => setFormData({ ...formData, url: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Cole aqui a URL de trigger do seu workflow n8n
+                Cole a URL de trigger/webhook do seu workflow n8n
               </p>
             </div>
             <div className="space-y-2">
@@ -824,20 +767,21 @@ export default function Automacao() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveWebhook}>
+            <Button onClick={handleSaveWebhook} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {selectedWebhook ? "Salvar Alterações" : "Criar Webhook"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Webhook</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o webhook "{webhookToDelete?.nome}"? 
+              Tem certeza que deseja excluir o webhook "{webhookToDelete?.nome}"?
               Esta ação não pode ser desfeita e todos os eventos relacionados serão removidos.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -861,9 +805,7 @@ export default function Automacao() {
               <History className="w-5 h-5" />
               Histórico: {selectedWebhook?.nome}
             </DialogTitle>
-            <DialogDescription>
-              Todos os eventos disparados para este webhook
-            </DialogDescription>
+            <DialogDescription>Eventos registrados para este webhook</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto py-4">
             {webhookHistory.length === 0 ? (
@@ -891,24 +833,24 @@ export default function Automacao() {
                           <XCircle className="w-4 h-4 text-destructive" />
                         )}
                         <Badge variant={evento.status === "sucesso" ? "default" : "destructive"}>
-                          {evento.statusCode}
+                          {evento.status_code || "—"}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
-                          {evento.tempoResposta}ms
+                          {evento.tempo_resposta ?? "—"}ms
                         </span>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {format(new Date(evento.dataHora), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+                        {format(new Date(evento.created_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
                       </span>
                     </div>
                     {evento.erro && (
-                      <p className="text-sm text-destructive mb-2">{evento.erro}</p>
+                      <p className="text-xs text-destructive mb-2">{evento.erro}</p>
                     )}
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                         Ver payload
                       </summary>
-                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
+                      <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                         {JSON.stringify(evento.payload, null, 2)}
                       </pre>
                     </details>
