@@ -326,7 +326,7 @@ export default function Automacao() {
       });
 
       // Update stats
-      await supabase
+      await (supabase as any)
         .from("webhooks")
         .update({
           total_eventos: webhook.total_eventos + 1,
