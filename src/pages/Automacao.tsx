@@ -314,7 +314,7 @@ export default function Automacao() {
       const isSuccess = response.ok;
 
       // Log event
-      await supabase.from("webhook_eventos").insert({
+      await (supabase as any).from("webhook_eventos").insert({
         webhook_id: webhook.id,
         webhook_nome: webhook.nome,
         evento: webhook.evento,
