@@ -263,7 +263,7 @@ export default function Automacao() {
 
   // Toggle active
   const handleToggleWebhook = async (webhook: WebhookRow) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("webhooks")
       .update({ ativo: !webhook.ativo, updated_at: new Date().toISOString() })
       .eq("id", webhook.id);
