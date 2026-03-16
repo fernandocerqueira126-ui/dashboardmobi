@@ -141,11 +141,11 @@ export default function Automacao() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [webhooksRes, eventosRes] = await Promise.all([
-      supabase.from("webhooks").select("*").order("created_at", { ascending: false }),
-      supabase.from("webhook_eventos").select("*").order("created_at", { ascending: false }).limit(50),
+      (supabase as any).from("webhooks").select("*").order("created_at", { ascending: false }),
+      (supabase as any).from("webhook_eventos").select("*").order("created_at", { ascending: false }).limit(50),
     ]);
-    if (webhooksRes.data) setWebhooks(webhooksRes.data as unknown as WebhookRow[]);
-    if (eventosRes.data) setEventos(eventosRes.data as unknown as EventoRow[]);
+    if (webhooksRes.data) setWebhooks(webhooksRes.data as WebhookRow[]);
+    if (eventosRes.data) setEventos(eventosRes.data as EventoRow[]);
     setLoading(false);
   }, []);
 
