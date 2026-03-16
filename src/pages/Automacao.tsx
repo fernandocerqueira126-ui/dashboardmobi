@@ -279,7 +279,7 @@ export default function Automacao() {
   // Delete webhook
   const handleDeleteWebhook = async () => {
     if (!webhookToDelete) return;
-    const { error } = await supabase.from("webhooks").delete().eq("id", webhookToDelete.id);
+    const { error } = await (supabase as any).from("webhooks").delete().eq("id", webhookToDelete.id);
     if (error) {
       toast.error("Erro ao excluir webhook");
       return;
