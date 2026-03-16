@@ -64,6 +64,7 @@ const typeColors: Record<NotificationType, string> = {
 
 export function Header({ title, subtitle, icon }: HeaderProps) {
   const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   
   // Get recent notifications (last 5)
