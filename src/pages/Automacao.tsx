@@ -349,7 +349,7 @@ export default function Automacao() {
       const tempoResposta = Date.now() - startTime;
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
 
-      await supabase.from("webhook_eventos").insert({
+      await (supabase as any).from("webhook_eventos").insert({
         webhook_id: webhook.id,
         webhook_nome: webhook.nome,
         evento: webhook.evento,
