@@ -233,7 +233,7 @@ export default function Automacao() {
       }
       toast.success("Webhook atualizado com sucesso!");
     } else {
-      const { error } = await supabase.from("webhooks").insert({
+      const { error } = await (supabase as any).from("webhooks").insert({
         nome: formData.nome,
         url: formData.url,
         evento: formData.evento,
