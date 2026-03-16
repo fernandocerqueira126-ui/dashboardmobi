@@ -1,5 +1,6 @@
 import { Bell, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -63,6 +64,7 @@ const typeColors: Record<NotificationType, string> = {
 
 export function Header({ title, subtitle, icon }: HeaderProps) {
   const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   
   // Get recent notifications (last 5)
@@ -190,21 +192,27 @@ export function Header({ title, subtitle, icon }: HeaderProps) {
               <Avatar className="w-8 h-8">
                 <AvatarImage src="" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                  AD
+                  {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="text-left hidden md:block">
-                <p className="text-sm font-medium text-foreground">Admin</p>
-                <p className="text-xs text-muted-foreground">admin@crm.com</p>
+                <p className="text-sm font-medium text-foreground">{user?.user_metadata?.full_name || "Usuário"}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/perfil")}>
               <User className="w-4 h-4 mr-2" />
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={async () => {
+                await signOut();
+                navigate("/login");
+              }}
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Sair
             </DropdownMenuItem>
