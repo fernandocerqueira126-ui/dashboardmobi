@@ -214,7 +214,7 @@ export default function Automacao() {
     setSaving(true);
 
     if (selectedWebhook) {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("webhooks")
         .update({
           nome: formData.nome,
