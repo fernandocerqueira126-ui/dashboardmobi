@@ -280,6 +280,98 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_eventos: {
+        Row: {
+          created_at: string
+          erro: string | null
+          evento: string
+          id: string
+          payload: Json | null
+          status: string
+          status_code: number | null
+          tempo_resposta: number | null
+          webhook_id: string
+          webhook_nome: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          evento: string
+          id?: string
+          payload?: Json | null
+          status?: string
+          status_code?: number | null
+          tempo_resposta?: number | null
+          webhook_id: string
+          webhook_nome: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          evento?: string
+          id?: string
+          payload?: Json | null
+          status?: string
+          status_code?: number | null
+          tempo_resposta?: number | null
+          webhook_id?: string
+          webhook_nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_eventos_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          evento: string
+          eventos_sucesso: number
+          id: string
+          nome: string
+          secret_key: string
+          total_eventos: number
+          ultima_execucao: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          evento: string
+          eventos_sucesso?: number
+          id?: string
+          nome: string
+          secret_key?: string
+          total_eventos?: number
+          ultima_execucao?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          evento?: string
+          eventos_sucesso?: number
+          id?: string
+          nome?: string
+          secret_key?: string
+          total_eventos?: number
+          ultima_execucao?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
