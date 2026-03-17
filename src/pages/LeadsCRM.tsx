@@ -687,71 +687,7 @@ export default function LeadsCRM() {
       />
 
       <div className="flex-1 overflow-auto p-6">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-blue mx-auto mb-2">
-              <RefreshCw className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">
-              {stats.total.toString().padStart(2, "0")}
-            </p>
-            <p className="text-xs text-muted-foreground">Total</p>
-          </div>
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-purple mx-auto mb-2">
-              <TestTube className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">
-              {getLeadsByStatus("proposta").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Propostas</p>
-          </div>
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-green mx-auto mb-2">
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">
-              R$ {stats.faturado.toLocaleString("pt-BR")}
-            </p>
-            <p className="text-xs text-muted-foreground">Faturado</p>
-          </div>
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-red mx-auto mb-2">
-              <AlertCircle className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">
-              {getLeadsByStatus("perdido").length}
-            </p>
-            <p className="text-xs text-muted-foreground">Perdidos</p>
-          </div>
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-orange mx-auto mb-2">
-              <CheckCircle className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">{stats.conversao}%</p>
-            <p className="text-xs text-muted-foreground">Conv</p>
-          </div>
-          <div className="card-metric p-3 text-center">
-            <div className="stat-icon stat-icon-yellow mx-auto mb-2">
-              <Award className="w-4 h-4" />
-            </div>
-            <p className="text-lg font-bold text-foreground">{stats.pagos}</p>
-            <p className="text-xs text-muted-foreground">Pagos</p>
-          </div>
-        </div>
-
-        {/* Leads que Pagaram */}
-        {stats.pagos > 0 && (
-          <div className="card-metric mb-6 p-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
-              <span className="text-sm font-medium text-success">
-                {stats.pagos} Lead{stats.pagos > 1 ? "s" : ""} que Pagaram - Total: R$ {stats.faturado.toLocaleString("pt-BR")}
-              </span>
-            </div>
-          </div>
-        )}
+        {/* Stats removed - available in Relatórios page */}
 
         {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
