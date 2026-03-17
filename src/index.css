@@ -130,7 +130,7 @@
   }
 
   .lead-card {
-    @apply bg-secondary/80 rounded-lg p-4 border border-border/30 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5;
+    @apply bg-secondary/60 rounded-lg p-3 border border-border/20 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 hover:bg-secondary/80;
   }
 
   .btn-primary {
