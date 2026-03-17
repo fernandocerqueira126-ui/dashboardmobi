@@ -801,6 +801,7 @@ export default function LeadsCRM() {
                 onMove={(l) => { setLeadToMove(l); setIsMoveDialogOpen(true); }}
                 onConvert={(l) => { setLeadToConvert(l); setIsConvertDialogOpen(true); }}
                 onDelete={(l) => { setLeadToDelete(l); setIsDeleteDialogOpen(true); }}
+                onAddLead={(status) => handleNewLead(status)}
               />
             ))}
           </div>
