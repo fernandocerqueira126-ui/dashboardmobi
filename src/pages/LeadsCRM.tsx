@@ -92,6 +92,24 @@ const colorClasses = {
   red: "bg-red-500",
 };
 
+const headerGradients = {
+  blue: "bg-gradient-to-r from-blue-600 to-blue-500",
+  orange: "bg-gradient-to-r from-orange-600 to-orange-500",
+  purple: "bg-gradient-to-r from-purple-600 to-purple-500",
+  yellow: "bg-gradient-to-r from-yellow-600 to-yellow-500",
+  green: "bg-gradient-to-r from-emerald-600 to-emerald-500",
+  red: "bg-gradient-to-r from-red-600 to-red-500",
+};
+
+const headerBorderColors = {
+  blue: "border-blue-500/30",
+  orange: "border-orange-500/30",
+  purple: "border-purple-500/30",
+  yellow: "border-yellow-500/30",
+  green: "border-emerald-500/30",
+  red: "border-red-500/30",
+};
+
 // Draggable Lead Card Component - drag pelo card inteiro
 function DraggableLeadCard({
   lead,

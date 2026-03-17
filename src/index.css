@@ -126,7 +126,7 @@
   }
 
   .kanban-column {
-    @apply bg-card/50 rounded-xl p-4 min-w-[280px] border border-border/30;
+    @apply bg-card/80 rounded-xl min-w-[280px] border border-border/30 overflow-hidden;
   }
 
   .lead-card {
