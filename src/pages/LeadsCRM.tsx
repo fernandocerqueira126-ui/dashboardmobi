@@ -309,6 +309,7 @@ function DroppableColumn({
   onMove,
   onConvert,
   onDelete,
+  onAddLead,
 }: {
   column: (typeof columnConfig)[0];
   leads: Lead[];
@@ -317,6 +318,7 @@ function DroppableColumn({
   onMove: (lead: Lead) => void;
   onConvert: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
+  onAddLead: (status: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -331,78 +333,74 @@ function DroppableColumn({
       ref={setNodeRef}
       className={cn(
         "kanban-column flex flex-col h-full transition-all duration-200 min-w-[280px]",
-        isOver && "ring-2 ring-primary ring-dashed bg-primary/5 scale-[1.02]"
+        isOver && "ring-2 ring-primary ring-dashed scale-[1.02]"
       )}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className={cn("w-2 h-2 rounded-full", colorClasses[column.color])} />
-        <h3 className="font-medium text-foreground">{column.title}</h3>
-        <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-          {leads.length}
-        </span>
-        {leads.length > 0 && (
-          <span className="text-xs text-success bg-success/10 px-1.5 py-0.5 rounded ml-auto">
-            ${leads.length}
-          </span>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-        <div className="bg-secondary/50 rounded-lg p-2">
-          <p className="text-xs text-primary font-medium">
-            R$ {stats.estimated.toLocaleString("pt-BR")}
-          </p>
-          <p className="text-[10px] text-muted-foreground">Estimado</p>
-        </div>
-        <div className="bg-secondary/50 rounded-lg p-2">
-          <p className="text-xs text-foreground font-medium">
-            R$ {stats.invoiced.toLocaleString("pt-BR")}
-          </p>
-          <p className="text-[10px] text-muted-foreground">Faturado</p>
-        </div>
-        <div className="bg-secondary/50 rounded-lg p-2">
-          <p className="text-xs text-foreground font-medium">{stats.paid}</p>
-          <p className="text-[10px] text-muted-foreground">Pagos</p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="mb-4">
-        <div className="flex justify-between text-xs mb-1">
-          <span className="text-muted-foreground">Conversão</span>
-          <span className="text-foreground">{stats.conversion}%</span>
-        </div>
-        <div className="progress-bar">
-          <div
-            className={cn("progress-fill", colorClasses[column.color])}
-            style={{ width: `${Math.min(stats.conversion, 100)}%` }}
-          />
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-1">Meta: 25% conversão</p>
-      </div>
-
-      {/* Leads */}
-      <div className="flex-1 space-y-3 overflow-y-auto min-h-[200px]">
-        {leads.length > 0 ? (
-          leads.map((lead) => (
-            <DraggableLeadCard
-              key={lead.id}
-              lead={lead}
-              onEdit={onEdit}
-              onMove={onMove}
-              onConvert={onConvert}
-              onDelete={onDelete}
-            />
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground h-full">
-            <TrendingUp className="w-8 h-8 mb-2 opacity-30" />
-            <p className="text-sm">Vazio</p>
-            <p className="text-xs text-center">Arraste leads para cá</p>
+      {/* Colored Header Bar */}
+      <div className={cn("px-4 py-3", headerGradients[column.color])}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-white text-sm">{column.title}</h3>
+            <span className="text-xs bg-white/20 text-white px-1.5 py-0.5 rounded-full font-medium">
+              {leads.length}
+            </span>
           </div>
-        )}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              onClick={() => onAddLead(column.id)}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-white/70 mt-0.5">{column.subtitle}</p>
+      </div>
+
+      {/* Column Body */}
+      <div className="p-3 flex-1 flex flex-col">
+        {/* Mini Stats Row */}
+        <div className="flex items-center gap-2 mb-3 text-[10px]">
+          <span className="text-muted-foreground">
+            Est: <span className="text-primary font-medium">R$ {stats.estimated.toLocaleString("pt-BR")}</span>
+          </span>
+          <span className="text-muted-foreground">•</span>
+          <span className="text-muted-foreground">
+            Conv: <span className="text-foreground font-medium">{stats.conversion}%</span>
+          </span>
+        </div>
+
+        {/* Leads */}
+        <div className="flex-1 space-y-2 overflow-y-auto min-h-[200px]">
+          {leads.length > 0 ? (
+            leads.map((lead) => (
+              <DraggableLeadCard
+                key={lead.id}
+                lead={lead}
+                onEdit={onEdit}
+                onMove={onMove}
+                onConvert={onConvert}
+                onDelete={onDelete}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground h-full opacity-50">
+              <TrendingUp className="w-6 h-6 mb-2" />
+              <p className="text-xs text-center">Arraste leads para cá</p>
+            </div>
+          )}
+        </div>
+
+        {/* Add Lead Button */}
+        <button
+          onClick={() => onAddLead(column.id)}
+          className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-2 w-full justify-center border border-dashed border-border/50 rounded-lg hover:border-primary/50"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Adicionar tarefa
+        </button>
       </div>
     </div>
   );
