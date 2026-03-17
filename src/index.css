@@ -126,11 +126,11 @@
   }
 
   .kanban-column {
-    @apply bg-card/50 rounded-xl p-4 min-w-[280px] border border-border/30;
+    @apply bg-card/80 rounded-xl min-w-[280px] border border-border/30 overflow-hidden;
   }
 
   .lead-card {
-    @apply bg-secondary/80 rounded-lg p-4 border border-border/30 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5;
+    @apply bg-secondary/60 rounded-lg p-3 border border-border/20 cursor-pointer transition-all duration-200 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 hover:bg-secondary/80;
   }
 
   .btn-primary {
