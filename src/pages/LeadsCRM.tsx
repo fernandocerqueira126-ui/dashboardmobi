@@ -548,8 +548,11 @@ export default function LeadsCRM() {
     setEditingLead(null);
   };
 
-  const handleNewLead = () => {
+  const handleNewLead = (defaultStatus?: string) => {
     resetForm();
+    if (defaultStatus) {
+      setFormData((prev) => ({ ...prev, status: defaultStatus }));
+    }
     setIsModalOpen(true);
   };
 
