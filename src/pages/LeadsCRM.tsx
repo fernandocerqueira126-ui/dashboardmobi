@@ -777,7 +777,7 @@ export default function LeadsCRM() {
             <Download className="w-4 h-4" />
             Exportar
           </Button>
-          <Button className="btn-primary gap-2 ml-auto" onClick={handleNewLead}>
+          <Button className="btn-primary gap-2 ml-auto" onClick={() => handleNewLead()}>
             <Plus className="w-4 h-4" />
             Novo Lead
           </Button>
