@@ -169,7 +169,6 @@ export type Database = {
           tags: string[] | null
           ultima_mensagem: string | null
           value: number | null
-          corretor_id: string | null
         }
         Insert: {
           created_at?: string
@@ -187,7 +186,6 @@ export type Database = {
           tags?: string[] | null
           ultima_mensagem?: string | null
           value?: number | null
-          corretor_id?: string | null
         }
         Update: {
           created_at?: string
@@ -205,7 +203,6 @@ export type Database = {
           tags?: string[] | null
           ultima_mensagem?: string | null
           value?: number | null
-          corretor_id?: string | null
         }
         Relationships: []
       }
