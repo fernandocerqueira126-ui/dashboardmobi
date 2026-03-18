@@ -35,7 +35,9 @@ O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de R
    VITE_SUPABASE_URL="SUA_URL"
    VITE_SUPABASE_ANON_KEY="SUA_CHAVE"
    ```
-4. **Suba o servidor:**
+4. **Configure o Banco de Dados:**
+   Abra o arquivo `database_schema.sql` presente na raiz do repositório, copie todo o seu conteúdo e execute no **SQL Editor** do seu painel do Supabase. Isso replicará instantaneamente todas as tabelas, Storage, Webhooks e Políticas de segurança.
+5. **Suba o servidor:**
    ```bash
    npm run dev
    ```
@@ -69,7 +71,9 @@ O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de R
    VITE_SUPABASE_URL="YOUR_URL"
    VITE_SUPABASE_ANON_KEY="YOUR_KEY"
    ```
-4. **Start the server:**
+4. **Setup the Database:**
+   Open the `database_schema.sql` file located in the root folder, copy all of its content, and execute it within your Supabase project's **SQL Editor**. This will instantly replicate all tables, storage, webhooks, and security policies required for the application.
+5. **Start the server:**
    ```bash
    npm run dev
    ```
