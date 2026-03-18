@@ -14,6 +14,7 @@ import { FinanceiroProvider } from "@/contexts/FinanceiroContext";
 import { AtendimentosProvider } from "@/contexts/AtendimentosContext";
 import Index from "./pages/Index";
 import LeadsCRM from "./pages/LeadsCRM";
+import ConfigKanban from "./pages/ConfigKanban";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
 import Colaboradores from "./pages/Colaboradores";
@@ -55,6 +56,7 @@ const App = () => (
                                 <Routes>
                                   <Route path="/" element={<Index />} />
                                   <Route path="/leads" element={<LeadsCRM />} />
+                                  <Route path="/leads/config" element={<ConfigKanban />} />
                                   <Route path="/agenda" element={<Agenda />} />
                                   <Route path="/clientes" element={<Clientes />} />
                                   <Route path="/colaboradores" element={<Colaboradores />} />

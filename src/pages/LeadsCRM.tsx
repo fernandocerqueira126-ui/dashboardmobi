@@ -84,37 +84,53 @@ import {
   FileText,
   Link,
   Clock,
+  Facebook,
+  Megaphone,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useNotifications } from "@/contexts/NotificationsContext";
-import { useLeads, Lead, columnConfig, sourceOptions } from "@/contexts/LeadsContext";
-
-const headerGradients = {
-  blue: "bg-gradient-to-r from-blue-600 to-blue-500",
-  orange: "bg-gradient-to-r from-orange-600 to-orange-500",
-  purple: "bg-gradient-to-r from-purple-600 to-purple-500",
-  yellow: "bg-gradient-to-r from-yellow-600 to-yellow-500",
-  green: "bg-gradient-to-r from-emerald-600 to-emerald-500",
-  red: "bg-gradient-to-r from-red-600 to-red-500",
-};
+import { useLeads, Lead, sourceOptions, Column } from "@/contexts/LeadsContext";
+import { useColaboradores } from "@/contexts/ColaboradoresContext";
+import { useNavigate } from "react-router-dom";
 
 // Source icon helper
 function SourceIcon({ source, className }: { source: string; className?: string }) {
-  if (source === "WhatsApp") return <MessageCircle className={cn("text-emerald-400", className)} />;
-  if (source === "Instagram") return <Instagram className={cn("text-pink-400", className)} />;
+  const normSource = source?.toLowerCase();
+  if (normSource === "whatsapp") return <MessageCircle className={cn("text-emerald-400", className)} />;
+  if (normSource === "instagram") return <Instagram className={cn("text-pink-400", className)} />;
+  if (normSource === "facebook") return <Facebook className={cn("text-blue-500", className)} />;
+  if (normSource === "google ads") return <Megaphone className={cn("text-orange-500", className)} />;
+  if (normSource === "indicação") return <Users className={cn("text-primary", className)} />;
+  if (normSource === "site") return <Link className={cn("text-foreground", className)} />;
   return null;
+}
+
+// Helper for dot color
+function SourceDot({ source }: { source: string }) {
+  const normSource = source?.toLowerCase();
+  if (normSource === "whatsapp") return <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />;
+  if (normSource === "instagram") return <span className="w-1.5 h-1.5 rounded-full bg-pink-400 inline-block" />;
+  if (normSource === "facebook") return <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />;
+  if (normSource === "google ads") return <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" />;
+  if (normSource === "indicação") return <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />;
+  return <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block" />;
 }
 
 // Compact Draggable Lead Card
 function DraggableLeadCard({
   lead,
   onClick,
+  corretores,
+  column,
 }: {
   lead: Lead;
   onClick: (lead: Lead) => void;
+  corretores?: { id: string; nome: string }[];
+  column?: Column;
 }) {
   const {
     attributes,
@@ -132,6 +148,8 @@ function DraggableLeadCard({
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 1000 : 1,
   };
+  
+  const color = column?.color || "#3B82F6";
 
   const timeAgo = (() => {
     try {
@@ -154,11 +172,11 @@ function DraggableLeadCard({
         }
       }}
       className={cn(
-        "bg-card border border-border/50 rounded-lg p-3 cursor-grab active:cursor-grabbing touch-none",
-        "hover:border-border transition-colors group",
-        isDragging && "shadow-lg ring-2 ring-primary"
+        "group bg-card rounded-lg p-3 border cursor-pointer hover:border-primary/50 transition-colors shadow-sm relative overflow-hidden",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
     >
+      <div className="absolute left-0 top-0 bottom-0 w-1 opacity-70" style={{ backgroundColor: color }} />
       <div className="flex items-center justify-between mb-1.5">
         <h4 className="font-medium text-foreground text-sm truncate flex-1">{lead.name}</h4>
         <SourceIcon source={lead.source} className="w-4 h-4 ml-2 flex-shrink-0" />
@@ -172,10 +190,21 @@ function DraggableLeadCard({
         <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
       )}
 
+      {lead.corretorId && corretores && (() => {
+        const corretor = corretores.find(c => c.id === lead.corretorId);
+        if (!corretor) return null;
+        return (
+          <p className="text-[11px] text-muted-foreground mt-1 truncate flex items-center gap-1">
+            <UserCircle className="w-3 h-3" />
+            {corretor.nome}
+          </p>
+        );
+      })()}
+
       <div className="flex items-center justify-between mt-2">
         {lead.source && (
           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            <SourceDot source={lead.source} />
             {lead.source.toLowerCase()}
           </span>
         )}
@@ -206,11 +235,13 @@ function DroppableColumn({
   leads,
   onCardClick,
   onAddLead,
+  corretores,
 }: {
-  column: (typeof columnConfig)[0];
+  column: Column;
   leads: Lead[];
   onCardClick: (lead: Lead) => void;
   onAddLead: (status: string) => void;
+  corretores?: { id: string; nome: string }[];
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -221,50 +252,54 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col min-w-[240px] w-[240px] flex-shrink-0 rounded-xl overflow-hidden bg-secondary/30 border border-border/30",
+        "flex flex-col min-w-[240px] w-[240px] flex-shrink-0 rounded-xl overflow-hidden bg-secondary/30",
+        "border border-border/30 border-t-2",
         isOver && "ring-2 ring-primary ring-dashed"
       )}
+      style={{ borderTopColor: column.color }}
     >
       {/* Header */}
-      <div className={cn("px-3 py-2.5", headerGradients[column.color])}>
+      <div
+        className="px-3 py-2.5"
+        style={{ backgroundColor: `${column.color}1A` }} /* 1A is ~10% opacity */
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-white text-xs">{column.title}</h3>
-            <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-medium">
+            <h3 className="font-semibold text-xs" style={{ color: column.color }}>
+              {column.title}
+            </h3>
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: `${column.color}33`, color: column.color }} /* 33 is ~20% opacity */
+            >
               {leads.length}
             </span>
           </div>
           <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 text-white/60 hover:text-white hover:bg-white/10"
-            >
-              <Settings className="w-3 h-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0 text-white/60 hover:text-white hover:bg-white/10"
+              size="icon"
+              className="h-6 w-6"
+              style={{ color: column.color }}
               onClick={() => onAddLead(column.id)}
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
-        <p className="text-[10px] text-white/60 mt-0.5">{column.subtitle}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{column.subtitle}</p>
       </div>
 
       {/* Cards area - scrollable */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {leads.length > 0 ? (
           leads.map((lead) => (
-            <DraggableLeadCard key={lead.id} lead={lead} onClick={onCardClick} />
+            <DraggableLeadCard key={lead.id} lead={lead} onClick={onCardClick} corretores={corretores} column={column} />
           ))
         ) : (
           <button
             onClick={() => onAddLead(column.id)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-6 w-full justify-center"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors py-6 w-full justify-center rounded-md hover:bg-secondary"
           >
             <Plus className="w-3.5 h-3.5" />
             Adicionar tarefa
@@ -276,7 +311,7 @@ function DroppableColumn({
       {leads.length > 0 && (
         <button
           onClick={() => onAddLead(column.id)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-2 w-full justify-center border-t border-border/30"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors py-2 w-full justify-center border-t border-border/30 hover:bg-secondary"
         >
           <Plus className="w-3 h-3" />
           Adicionar tarefa
@@ -304,8 +339,9 @@ function LeadDetailSheet({
   onConvert: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
 }) {
-  if (!lead) return null;
+  const { columns } = useLeads();
 
+  if (!lead) return null;
   const initials = lead.name
     .split(" ")
     .map((n) => n[0])
@@ -313,7 +349,7 @@ function LeadDetailSheet({
     .toUpperCase()
     .slice(0, 2);
 
-  const currentColumn = columnConfig.find((c) => c.id === lead.status);
+  const currentColumn = columns.find((c) => c.id === lead.status);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -440,9 +476,13 @@ function LeadDetailSheet({
 
 export default function LeadsCRM() {
   const { addNotification } = useNotifications();
-  const { leads, isLoading, addLead, updateLead, deleteLead, moveLeadToStatus } = useLeads();
+  const navigate = useNavigate();
+  const leadsCtx = useLeads();
+  const { leads, isLoading, addLead, updateLead, deleteLead, moveLeadToStatus } = leadsCtx;
+  const { colaboradores } = useColaboradores();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSource, setFilterSource] = useState<string>("todos");
+  const [filterCorretor, setFilterCorretor] = useState<string>("todos");
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Detail sheet
@@ -469,6 +509,7 @@ export default function LeadsCRM() {
     description: "",
     source: "",
     status: "novo",
+    corretorId: "nenhum",
   });
 
   const sensors = useSensors(
@@ -478,15 +519,17 @@ export default function LeadsCRM() {
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
+      const searchLower = searchTerm.toLowerCase();
       const matchesSearch =
         searchTerm === "" ||
-        lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.phone.includes(searchTerm);
+        (lead.name && lead.name.toLowerCase().includes(searchLower)) ||
+        (lead.email && lead.email.toLowerCase().includes(searchLower)) ||
+        (lead.phone && lead.phone.includes(searchTerm));
       const matchesSource = filterSource === "todos" || lead.source === filterSource;
-      return matchesSearch && matchesSource;
+      const matchesCorretor = filterCorretor === "todos" || lead.corretorId === filterCorretor;
+      return matchesSearch && matchesSource && matchesCorretor;
     });
-  }, [leads, searchTerm, filterSource]);
+  }, [leads, searchTerm, filterSource, filterCorretor]);
 
   const getLeadsByStatus = (status: string) =>
     filteredLeads.filter((lead) => lead.status === status);
@@ -505,17 +548,21 @@ export default function LeadsCRM() {
     if (!activeLead) return;
 
     let targetColumn: string;
-    if (columnConfig.some((col) => col.id === overId)) {
-      targetColumn = overId;
-    } else {
+    if (leads.find((l) => l.id === overId)) {
       const targetLead = leads.find((l) => l.id === overId);
       targetColumn = targetLead?.status || activeLead.status;
+    } else {
+      targetColumn = overId;
     }
 
     if (activeLead.status !== targetColumn) {
       await moveLeadToStatus(activeLeadId, targetColumn);
-      const newColumn = columnConfig.find((c) => c.id === targetColumn)?.title;
-      toast.success(`Lead movido para ${newColumn}`);
+      // Removed newColumn check and toast to avoid hardcode dependency
+      // Context will naturally show the toast itself inside moveLeadToStatus if desired
+      // or we just find the column directly from `leadsCtx` (actually we don't have columns here without importing it from context)
+      // Since `useLeads` provides `columns`, wait let's use it.
+      const newColName = leadsCtx.columns.find((c) => c.id === targetColumn)?.title;
+      toast.success(`Lead movido para ${newColName || targetColumn}`);
 
       if (targetColumn === "ganho") {
         addNotification({
@@ -536,7 +583,7 @@ export default function LeadsCRM() {
 
   // Form handlers
   const resetForm = () => {
-    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo" });
+    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo", corretorId: "nenhum" });
     setEditingLead(null);
   };
 
@@ -556,6 +603,7 @@ export default function LeadsCRM() {
       description: lead.description || "",
       source: lead.source,
       status: lead.status,
+      corretorId: lead.corretorId || "nenhum",
     });
     setIsModalOpen(true);
   };
@@ -572,6 +620,7 @@ export default function LeadsCRM() {
         name: formData.name, phone: formData.phone, email: formData.email,
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
+        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
       });
       toast.success("Lead atualizado!");
     } else {
@@ -580,6 +629,7 @@ export default function LeadsCRM() {
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
         date: format(new Date(), "yyyy-MM-dd"),
+        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
       });
       toast.success("Lead criado com sucesso!");
     }
@@ -612,7 +662,7 @@ export default function LeadsCRM() {
     const headers = ["Nome", "Telefone", "Email", "Valor", "Status", "Origem", "Data"];
     const rows = filteredLeads.map((lead) => [
       lead.name, lead.phone, lead.email, `R$ ${lead.value.toFixed(2)}`,
-      columnConfig.find((c) => c.id === lead.status)?.title || lead.status,
+      leadsCtx.columns.find((c) => c.id === lead.status)?.title || lead.status,
       lead.source, format(new Date(lead.date), "dd/MM/yyyy", { locale: ptBR }),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -663,6 +713,19 @@ export default function LeadsCRM() {
             {sourceOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterCorretor} onValueChange={setFilterCorretor}>
+          <SelectTrigger className="w-[140px] h-8 text-sm">
+            <SelectValue placeholder="Corretor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos corretores</SelectItem>
+            {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => navigate("/leads/config")}>
+          <Settings className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Kanban</span>
+        </Button>
         <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleExport}>
           <Download className="w-3.5 h-3.5" />
           Exportar
@@ -682,13 +745,14 @@ export default function LeadsCRM() {
           onDragEnd={handleDragEnd}
         >
           <div className="flex gap-3 p-4 h-full overflow-x-auto">
-            {columnConfig.map((col) => (
+            {leadsCtx.columns.map((col) => (
               <DroppableColumn
                 key={col.id}
                 column={col}
                 leads={getLeadsByStatus(col.id)}
                 onCardClick={handleCardClick}
                 onAddLead={(status) => handleNewLead(status)}
+                corretores={colaboradores}
               />
             ))}
           </div>
@@ -747,12 +811,24 @@ export default function LeadsCRM() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{columnConfig.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{leadsCtx.columns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Corretor Atribuído</Label>
+                <Select value={formData.corretorId} onValueChange={(val) => setFormData({ ...formData, corretorId: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Nenhum / Não atribuído</SelectItem>
+                    {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Observações</Label>
@@ -774,7 +850,7 @@ export default function LeadsCRM() {
             <Select value={targetStatus} onValueChange={setTargetStatus}>
               <SelectTrigger><SelectValue placeholder="Selecione o destino" /></SelectTrigger>
               <SelectContent>
-                {columnConfig.filter((col) => col.id !== leadToMove?.status).map((col) => (
+                {leadsCtx.columns.filter((col) => col.id !== leadToMove?.status).map((col) => (
                   <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
                 ))}
               </SelectContent>

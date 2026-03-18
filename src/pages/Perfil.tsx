@@ -266,8 +266,14 @@ export default function Perfil() {
                   onChange={(e) => setCargo(e.target.value)}
                   className="pl-10"
                   placeholder="Ex: Corretor Senior"
+                  disabled={role !== "admin"}
                 />
               </div>
+              {role !== "admin" && (
+                <p className="text-[11px] text-muted-foreground">
+                  Apenas administradores podem alterar o cargo.
+                </p>
+              )}
             </div>
 
             <Button

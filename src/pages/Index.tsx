@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { useLeads, columnConfig } from "@/contexts/LeadsContext";
+import { useLeads } from "@/contexts/LeadsContext";
 import { useAgenda } from "@/contexts/AgendaContext";
 import { useFinanceiro } from "@/contexts/FinanceiroContext";
 import {
@@ -21,7 +21,8 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
-  const { leads, stats: leadsStats } = useLeads();
+  const leadsCtx = useLeads();
+  const { leads, stats: leadsStats } = leadsCtx;
   const { proximosAgendamentos, stats: agendaStats } = useAgenda();
   const { stats: financeiroStats } = useFinanceiro();
   const [loading, setLoading] = useState(true);
@@ -52,10 +53,10 @@ const Index = () => {
       .map((lead) => ({
         id: lead.id,
         name: lead.name,
-        status: columnConfig.find((c) => c.id === lead.status)?.title || lead.status,
+        status: leadsCtx.columns.find((c) => c.id === lead.status)?.title || lead.status,
         time: formatDistanceToNow(new Date(lead.date), { addSuffix: true, locale: ptBR }),
       }));
-  }, [leads]);
+  }, [leads, leadsCtx.columns]);
 
   // Format upcoming appointments for display
   const formattedAgendamentos = useMemo(() => {

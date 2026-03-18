@@ -18,17 +18,27 @@ export interface Lead {
   status: string;
   isPaid?: boolean;
   tags?: string[];
+  corretorId?: string | null;
 }
 
-// Column configuration
-export const columnConfig = [
-  { id: "novo", title: "Novo Lead", subtitle: "Primeiro contato", color: "blue" as const },
-  { id: "contato", title: "Contato Inicial", subtitle: "Coletando informações", color: "orange" as const },
-  { id: "visita", title: "Visita Marcada", subtitle: "Agendado, pendente confirmação", color: "purple" as const },
-  { id: "proposta", title: "Proposta Enviada", subtitle: "Proposta em análise", color: "yellow" as const },
-  { id: "documentacao", title: "Documentação/Análise", subtitle: "Documentação em andamento", color: "green" as const },
-  { id: "ganho", title: "Fechado/Contrato", subtitle: "Contrato assinado", color: "green" as const },
-  { id: "perdido", title: "Perdido", subtitle: "Lead não convertido", color: "red" as const },
+export type ColumnColor = string;
+
+export interface Column {
+  id: string;
+  title: string;
+  subtitle: string;
+  color: ColumnColor;
+}
+
+// Default configuration with Hex Colors
+export const defaultColumnConfig: Column[] = [
+  { id: "novo", title: "Novo Lead", subtitle: "Primeiro contato", color: "#3B82F6" },
+  { id: "contato", title: "Contato Inicial", subtitle: "Coletando informações", color: "#F97316" },
+  { id: "visita", title: "Visita Marcada", subtitle: "Agendado, pendente confirmação", color: "#8B5CF6" },
+  { id: "proposta", title: "Proposta Enviada", subtitle: "Proposta em análise", color: "#EAB308" },
+  { id: "documentacao", title: "Documentação/Análise", subtitle: "Documentação em andamento", color: "#14B8A6" },
+  { id: "ganho", title: "Fechado/Contrato", subtitle: "Contrato assinado", color: "#10B981" },
+  { id: "perdido", title: "Perdido", subtitle: "Lead não convertido", color: "#EF4444" },
 ];
 
 export const sourceOptions = [
@@ -38,7 +48,6 @@ export const sourceOptions = [
   "Google Ads",
   "Indicação",
   "Site",
-  "LinkedIn",
   "Outro",
 ];
 
@@ -64,6 +73,12 @@ interface LeadsContextType {
   getLeadsByDateRange: (startDate: Date, endDate: Date) => Lead[];
   uniqueSources: string[];
   refreshLeads: () => Promise<void>;
+  columns: Column[];
+  setColumns: React.Dispatch<React.SetStateAction<Column[]>>;
+  addColumn: (column: Column) => void;
+  updateColumn: (id: string, updates: Partial<Column>) => void;
+  deleteColumn: (id: string) => void;
+  reorderColumns: (newColumns: Column[]) => void;
 }
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
@@ -72,7 +87,7 @@ type LeadRow = Database['public']['Tables']['leads']['Row'];
 
 // Normalize status: map display titles back to column IDs
 const normalizeStatus = (status: string): string => {
-  const titleToId = columnConfig.reduce((acc, col) => {
+  const titleToId = defaultColumnConfig.reduce((acc, col) => {
     acc[col.title.toLowerCase()] = col.id;
     return acc;
   }, {} as Record<string, string>);
@@ -81,7 +96,7 @@ const normalizeStatus = (status: string): string => {
   // If it matches a title, return the id
   if (titleToId[lower]) return titleToId[lower];
   // If it already matches an id, return as-is
-  if (columnConfig.some(c => c.id === status)) return status;
+  if (defaultColumnConfig.some(c => c.id === status)) return status;
   // Default
   return "novo";
 };
@@ -100,11 +115,51 @@ const mapRowToLead = (row: LeadRow): Lead => ({
   status: normalizeStatus(row.status || "novo"),
   isPaid: row.is_paid || false,
   tags: row.tags || [],
+  corretorId: row.corretor_id || null,
 });
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [columns, setColumns] = useState<Column[]>(() => {
+    const saved = localStorage.getItem("kanban_columns");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const map: Record<string, string> = {
+          blue: "#3B82F6", orange: "#F97316", purple: "#8B5CF6", 
+          yellow: "#EAB308", teal: "#14B8A6", green: "#10B981", red: "#EF4444"
+        };
+        return parsed.map((c: Record<string, unknown>) => ({
+          ...c,
+          color: typeof c.color === 'string' ? (map[c.color] || (c.color.startsWith('#') ? c.color : "#3B82F6")) : "#3B82F6"
+        })) as Column[];
+      } catch (e) {
+        return defaultColumnConfig;
+      }
+    }
+    return defaultColumnConfig;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("kanban_columns", JSON.stringify(columns));
+  }, [columns]);
+
+  const addColumn = (column: Column) => {
+    setColumns(prev => [...prev, column]);
+  };
+
+  const updateColumn = (id: string, updates: Partial<Column>) => {
+    setColumns(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const deleteColumn = (id: string) => {
+    setColumns(prev => prev.filter(c => c.id !== id));
+  };
+
+  const reorderColumns = (newColumns: Column[]) => {
+    setColumns(newColumns);
+  };
 
   const fetchLeads = async (showLoading = false) => {
     if (showLoading) setIsLoading(true);
@@ -156,7 +211,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
             );
 
             if (oldStatus && oldStatus !== updatedLead.status) {
-              const column = columnConfig.find(c => c.id === updatedLead.status);
+              const column = columns.find(c => c.id === updatedLead.status);
               toast.success(`Lead movido para ${column?.title || updatedLead.status}`);
             }
           } else if (payload.eventType === 'DELETE') {
@@ -175,11 +230,11 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, []);
+  }, [columns]); // added columns to dependency array
 
   const addLead = async (leadData: Omit<Lead, "id">) => {
     try {
-      const { data, error } = await supabase
+      const { data: newLead, error } = await supabase
         .from('leads')
         .insert([{
           name: leadData.name,
@@ -193,15 +248,25 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           status: leadData.status,
           is_paid: leadData.isPaid,
           tags: leadData.tags,
+          corretor_id: leadData.corretorId,
         }])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Note: setLeads is handled by real-time subscription, 
-      // but we could also update it here if we want immediate UI response 
-      // before the DB confirms. For now, we rely on the subscription.
+      // Optimistic update to reflect immediately
+      if (newLead) {
+        setLeads((prev) => {
+          const mapped = mapRowToLead(newLead as LeadRow);
+          // Only add if it doesn't exist to prevent duplicates from real-time
+          if (!prev.find(l => l.id === mapped.id)) {
+            return [mapped, ...prev];
+          }
+          return prev;
+        });
+      }
+
       toast.success("Lead enviado com sucesso!");
     } catch (error) {
       console.error("Erro ao adicionar lead:", error);
@@ -223,17 +288,26 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       if (updates.status !== undefined) supabaseUpdates.status = updates.status;
       if (updates.isPaid !== undefined) supabaseUpdates.is_paid = updates.isPaid;
       if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
+      if (updates.corretorId !== undefined) supabaseUpdates.corretor_id = updates.corretorId;
+
+      // Optimistic update
+      setLeads((prev) => 
+        prev.map(lead => lead.id === id ? { ...lead, ...updates } : lead)
+      );
 
       const { error } = await supabase
         .from('leads')
         .update(supabaseUpdates)
         .eq('id', id);
 
-      if (error) throw error;
-      // State updated by real-time subscription
+      if (error) {
+        // Rollback handled if needed, or just let error throw
+        throw error;
+      }
     } catch (error) {
       console.error("Erro ao atualizar lead:", error);
       toast.error("Erro ao salvar alterações.");
+      // optionally could trigger a refetch here on failure
     }
   };
 
@@ -324,6 +398,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         getLeadsByDateRange,
         uniqueSources,
         refreshLeads: fetchLeads,
+        columns,
+        setColumns,
+        addColumn,
+        updateColumn,
+        deleteColumn,
+        reorderColumns,
       }}
     >
       {children}

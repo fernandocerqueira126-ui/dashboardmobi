@@ -28,7 +28,7 @@ import {
   CheckCircle,
   TestTube,
 } from "lucide-react";
-import { useLeads, columnConfig, sourceOptions } from "@/contexts/LeadsContext";
+import { useLeads, sourceOptions } from "@/contexts/LeadsContext";
 import { useFinanceiro } from "@/contexts/FinanceiroContext";
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -49,7 +49,8 @@ import {
 type PeriodPreset = "7dias" | "30dias" | "90dias" | "mes" | "custom";
 
 export default function Relatorios() {
-  const { leads, stats: globalStats } = useLeads();
+  const leadsCtx = useLeads();
+  const { leads, stats: globalStats } = leadsCtx;
   const { transacoes, stats: finStats } = useFinanceiro();
 
   const [startDate, setStartDate] = useState<string>(format(subDays(new Date(), 30), "yyyy-MM-dd"));
@@ -139,11 +140,11 @@ export default function Relatorios() {
 
   // Chart: Funnel data
   const funnelData = useMemo(() => {
-    return columnConfig.map((col) => ({
+    return leadsCtx.columns.map((col) => ({
       name: col.title,
       value: filteredLeads.filter((l) => l.status === col.id).length,
     }));
-  }, [filteredLeads]);
+  }, [filteredLeads, leadsCtx.columns]);
 
   // Chart: Source distribution
   const sourceData = useMemo(() => {
@@ -255,7 +256,7 @@ export default function Relatorios() {
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border z-50">
                     <SelectItem value="todos">Todos os status</SelectItem>
-                    {columnConfig.map((col) => (
+                    {leadsCtx.columns.map((col) => (
                       <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
                     ))}
                   </SelectContent>
@@ -410,7 +411,7 @@ export default function Relatorios() {
           </div>
           {filteredLeads.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-              {columnConfig.map((col) => {
+              {leadsCtx.columns.map((col) => {
                 const count = filteredLeads.filter((l) => l.status === col.id).length;
                 const pct = leadStats.total > 0 ? Math.round((count / leadStats.total) * 100) : 0;
                 return (
@@ -423,6 +424,7 @@ export default function Relatorios() {
                           : col.color === "purple" ? "#8B5CF6"
                           : col.color === "yellow" ? "#EAB308"
                           : col.color === "green" ? "#10B981"
+                          : col.color === "teal" ? "#14B8A6"
                           : "#EF4444"
                       }}
                     />

@@ -1,6 +1,7 @@
 import { Bell, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useColaboradores } from "@/contexts/ColaboradoresContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -66,6 +67,10 @@ export function Header({ title, subtitle, icon }: HeaderProps) {
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { colaboradores } = useColaboradores();
+  
+  const userColab = colaboradores.find(c => c.user_id === user?.id);
+  const displayRole = userColab?.cargo || (role === 'admin' ? 'Administrador' : 'Corretor');
   
   // Get recent notifications (last 5)
   const recentNotifications = notifications.slice(0, 5);
@@ -197,7 +202,7 @@ export function Header({ title, subtitle, icon }: HeaderProps) {
               </Avatar>
               <div className="text-left hidden md:block">
                 <p className="text-sm font-medium text-foreground">{user?.user_metadata?.full_name || "Usuário"}</p>
-                <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{displayRole}</p>
               </div>
             </button>
           </DropdownMenuTrigger>

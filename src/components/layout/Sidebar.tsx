@@ -19,6 +19,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useColaboradores } from "@/contexts/ColaboradoresContext";
 
 const menuGroups = [
   {
@@ -38,7 +39,7 @@ const menuGroups = [
   {
     title: "Administrativo",
     items: [
-      { icon: UserCircle, label: "Proprietários", path: "/clientes" },
+      { icon: UserCircle, label: "Clientes", path: "/clientes" },
       { icon: UsersRound, label: "Corretores", path: "/colaboradores" },
       { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
       { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
@@ -59,6 +60,10 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { unreadCount } = useNotifications();
   const { user, role, signOut } = useAuth();
+  const { colaboradores } = useColaboradores();
+
+  const userColab = colaboradores.find(c => c.user_id === user?.id);
+  const displayRole = userColab?.cargo || (role === 'admin' ? 'Administrador' : 'Corretor');
 
   const handleLogout = async () => {
     await signOut();
@@ -155,9 +160,11 @@ export function Sidebar() {
       <div className="border-t border-sidebar-border p-3 space-y-2">
         {!collapsed && user && (
           <div className="px-3 py-2">
-            <p className="text-xs font-semibold text-foreground truncate">{user.email}</p>
+            <p className="text-xs font-semibold text-foreground truncate">
+              {user?.user_metadata?.full_name || "Usuário"}
+            </p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              {role === 'admin' ? 'Administrador' : 'Corretor'}
+              {displayRole}
             </p>
           </div>
         )}

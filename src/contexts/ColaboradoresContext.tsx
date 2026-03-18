@@ -10,6 +10,7 @@ export interface Colaborador {
     cargo: string | null;
     status: 'ativo' | 'inativo';
     timestamp?: string;
+    user_id?: string | null;
 }
 
 interface ColaboradoresContextType {
@@ -32,7 +33,8 @@ const mapRowToColaborador = (row: any): Colaborador => ({
     telefone: row.telefone,
     cargo: row.cargo,
     status: (row.status as 'ativo' | 'inativo') || 'ativo',
-    timestamp: row.created_at
+    timestamp: row.created_at,
+    user_id: row.user_id || null
 });
 
 export function ColaboradoresProvider({ children }: { children: ReactNode }) {
