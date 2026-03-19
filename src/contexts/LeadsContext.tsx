@@ -250,7 +250,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           status: leadData.status,
           is_paid: leadData.isPaid,
           tags: leadData.tags,
-          corretor_id: leadData.corretorId,
+          link_imovel_interesse: leadData.linkImovelInteresse,
+          ultima_mensagem: leadData.ultimaMensagem,
         }])
         .select()
         .single();
