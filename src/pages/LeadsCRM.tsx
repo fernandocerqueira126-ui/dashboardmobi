@@ -808,16 +808,6 @@ export default function LeadsCRM() {
                   <SelectContent>{leadsCtx.columns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Corretor Atribuído</Label>
-                <Select value={formData.corretorId} onValueChange={(val) => setFormData({ ...formData, corretorId: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nenhum">Nenhum / Não atribuído</SelectItem>
-                    {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             <div className="space-y-2">
               <Label>Observações</Label>
