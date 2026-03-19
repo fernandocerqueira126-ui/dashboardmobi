@@ -18,7 +18,8 @@ export interface Lead {
   status: string;
   isPaid?: boolean;
   tags?: string[];
-  corretorId?: string | null;
+  linkImovelInteresse?: string | null;
+  ultimaMensagem?: string | null;
 }
 
 export type ColumnColor = string;
@@ -115,7 +116,8 @@ const mapRowToLead = (row: LeadRow): Lead => ({
   status: normalizeStatus(row.status || "novo"),
   isPaid: row.is_paid || false,
   tags: row.tags || [],
-  corretorId: row.corretor_id || null,
+  linkImovelInteresse: row.link_imovel_interesse || null,
+  ultimaMensagem: row.ultima_mensagem || null,
 });
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
@@ -248,7 +250,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           status: leadData.status,
           is_paid: leadData.isPaid,
           tags: leadData.tags,
-          corretor_id: leadData.corretorId,
+          link_imovel_interesse: leadData.linkImovelInteresse,
+          ultima_mensagem: leadData.ultimaMensagem,
         }])
         .select()
         .single();
@@ -275,6 +278,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   };
 
   const updateLead = async (id: string, updates: Partial<Lead>) => {
+    // Snapshot for rollback
+    const previousLeads = leads;
     try {
       const supabaseUpdates: any = {};
       if (updates.name !== undefined) supabaseUpdates.name = updates.name;
@@ -288,7 +293,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       if (updates.status !== undefined) supabaseUpdates.status = updates.status;
       if (updates.isPaid !== undefined) supabaseUpdates.is_paid = updates.isPaid;
       if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
-      if (updates.corretorId !== undefined) supabaseUpdates.corretor_id = updates.corretorId;
+      if (updates.linkImovelInteresse !== undefined) supabaseUpdates.link_imovel_interesse = updates.linkImovelInteresse;
+      if (updates.ultimaMensagem !== undefined) supabaseUpdates.ultima_mensagem = updates.ultimaMensagem;
 
       // Optimistic update
       setLeads((prev) => 
@@ -300,14 +306,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         .update(supabaseUpdates)
         .eq('id', id);
 
-      if (error) {
-        // Rollback handled if needed, or just let error throw
-        throw error;
-      }
+      if (error) throw error;
     } catch (error) {
       console.error("Erro ao atualizar lead:", error);
       toast.error("Erro ao salvar alterações.");
-      // optionally could trigger a refetch here on failure
+      // Rollback
+      setLeads(previousLeads);
     }
   };
 

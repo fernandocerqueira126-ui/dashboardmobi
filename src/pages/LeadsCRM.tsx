@@ -190,16 +190,6 @@ function DraggableLeadCard({
         <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
       )}
 
-      {lead.corretorId && corretores && (() => {
-        const corretor = corretores.find(c => c.id === lead.corretorId);
-        if (!corretor) return null;
-        return (
-          <p className="text-[11px] text-muted-foreground mt-1 truncate flex items-center gap-1">
-            <UserCircle className="w-3 h-3" />
-            {corretor.nome}
-          </p>
-        );
-      })()}
 
       <div className="flex items-center justify-between mt-2">
         {lead.source && (
@@ -509,7 +499,7 @@ export default function LeadsCRM() {
     description: "",
     source: "",
     status: "novo",
-    corretorId: "nenhum",
+    
   });
 
   const sensors = useSensors(
@@ -526,7 +516,7 @@ export default function LeadsCRM() {
         (lead.email && lead.email.toLowerCase().includes(searchLower)) ||
         (lead.phone && lead.phone.includes(searchTerm));
       const matchesSource = filterSource === "todos" || lead.source === filterSource;
-      const matchesCorretor = filterCorretor === "todos" || lead.corretorId === filterCorretor;
+      const matchesCorretor = true;
       return matchesSearch && matchesSource && matchesCorretor;
     });
   }, [leads, searchTerm, filterSource, filterCorretor]);
@@ -583,7 +573,7 @@ export default function LeadsCRM() {
 
   // Form handlers
   const resetForm = () => {
-    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo", corretorId: "nenhum" });
+    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo" });
     setEditingLead(null);
   };
 
@@ -603,7 +593,7 @@ export default function LeadsCRM() {
       description: lead.description || "",
       source: lead.source,
       status: lead.status,
-      corretorId: lead.corretorId || "nenhum",
+      
     });
     setIsModalOpen(true);
   };
@@ -620,7 +610,6 @@ export default function LeadsCRM() {
         name: formData.name, phone: formData.phone, email: formData.email,
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
-        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
       });
       toast.success("Lead atualizado!");
     } else {
@@ -629,7 +618,7 @@ export default function LeadsCRM() {
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
         date: format(new Date(), "yyyy-MM-dd"),
-        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
+        
       });
       toast.success("Lead criado com sucesso!");
     }
@@ -817,16 +806,6 @@ export default function LeadsCRM() {
                 <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{leadsCtx.columns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Corretor Atribuído</Label>
-                <Select value={formData.corretorId} onValueChange={(val) => setFormData({ ...formData, corretorId: val })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nenhum">Nenhum / Não atribuído</SelectItem>
-                    {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                  </SelectContent>
                 </Select>
               </div>
             </div>
