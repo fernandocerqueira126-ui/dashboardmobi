@@ -573,7 +573,7 @@ export default function LeadsCRM() {
 
   // Form handlers
   const resetForm = () => {
-    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo", corretorId: "nenhum" });
+    setFormData({ name: "", phone: "", email: "", value: "", description: "", source: "", status: "novo" });
     setEditingLead(null);
   };
 
