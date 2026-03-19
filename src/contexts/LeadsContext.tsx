@@ -291,7 +291,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       if (updates.status !== undefined) supabaseUpdates.status = updates.status;
       if (updates.isPaid !== undefined) supabaseUpdates.is_paid = updates.isPaid;
       if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
-      if (updates.corretorId !== undefined) supabaseUpdates.corretor_id = updates.corretorId;
+      if (updates.linkImovelInteresse !== undefined) supabaseUpdates.link_imovel_interesse = updates.linkImovelInteresse;
+      if (updates.ultimaMensagem !== undefined) supabaseUpdates.ultima_mensagem = updates.ultimaMensagem;
 
       // Optimistic update
       setLeads((prev) => 
