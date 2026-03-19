@@ -593,7 +593,7 @@ export default function LeadsCRM() {
       description: lead.description || "",
       source: lead.source,
       status: lead.status,
-      corretorId: lead.corretorId || "nenhum",
+      
     });
     setIsModalOpen(true);
   };
