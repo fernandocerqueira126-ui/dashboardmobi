@@ -190,16 +190,6 @@ function DraggableLeadCard({
         <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
       )}
 
-      {lead.corretorId && corretores && (() => {
-        const corretor = corretores.find(c => c.id === lead.corretorId);
-        if (!corretor) return null;
-        return (
-          <p className="text-[11px] text-muted-foreground mt-1 truncate flex items-center gap-1">
-            <UserCircle className="w-3 h-3" />
-            {corretor.nome}
-          </p>
-        );
-      })()}
 
       <div className="flex items-center justify-between mt-2">
         {lead.source && (
