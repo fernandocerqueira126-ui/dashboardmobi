@@ -278,6 +278,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   };
 
   const updateLead = async (id: string, updates: Partial<Lead>) => {
+    // Snapshot for rollback
+    const previousLeads = leads;
     try {
       const supabaseUpdates: any = {};
       if (updates.name !== undefined) supabaseUpdates.name = updates.name;
@@ -304,14 +306,12 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         .update(supabaseUpdates)
         .eq('id', id);
 
-      if (error) {
-        // Rollback handled if needed, or just let error throw
-        throw error;
-      }
+      if (error) throw error;
     } catch (error) {
       console.error("Erro ao atualizar lead:", error);
       toast.error("Erro ao salvar alterações.");
-      // optionally could trigger a refetch here on failure
+      // Rollback
+      setLeads(previousLeads);
     }
   };
 
