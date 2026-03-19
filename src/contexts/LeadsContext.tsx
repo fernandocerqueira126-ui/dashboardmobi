@@ -18,7 +18,8 @@ export interface Lead {
   status: string;
   isPaid?: boolean;
   tags?: string[];
-  corretorId?: string | null;
+  linkImovelInteresse?: string | null;
+  ultimaMensagem?: string | null;
 }
 
 export type ColumnColor = string;
