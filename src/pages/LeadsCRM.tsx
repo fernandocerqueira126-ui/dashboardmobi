@@ -618,7 +618,7 @@ export default function LeadsCRM() {
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
         date: format(new Date(), "yyyy-MM-dd"),
-        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
+        
       });
       toast.success("Lead criado com sucesso!");
     }
