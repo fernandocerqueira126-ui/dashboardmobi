@@ -116,7 +116,8 @@ const mapRowToLead = (row: LeadRow): Lead => ({
   status: normalizeStatus(row.status || "novo"),
   isPaid: row.is_paid || false,
   tags: row.tags || [],
-  corretorId: row.corretor_id || null,
+  linkImovelInteresse: row.link_imovel_interesse || null,
+  ultimaMensagem: row.ultima_mensagem || null,
 });
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
