@@ -610,7 +610,6 @@ export default function LeadsCRM() {
         name: formData.name, phone: formData.phone, email: formData.email,
         value: valorNumerico, description: formData.description,
         source: formData.source, status: formData.status,
-        corretorId: formData.corretorId !== "nenhum" ? formData.corretorId : null,
       });
       toast.success("Lead atualizado!");
     } else {
