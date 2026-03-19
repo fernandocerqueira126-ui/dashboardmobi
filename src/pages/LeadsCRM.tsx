@@ -516,7 +516,7 @@ export default function LeadsCRM() {
         (lead.email && lead.email.toLowerCase().includes(searchLower)) ||
         (lead.phone && lead.phone.includes(searchTerm));
       const matchesSource = filterSource === "todos" || lead.source === filterSource;
-      const matchesCorretor = filterCorretor === "todos" || lead.corretorId === filterCorretor;
+      const matchesCorretor = true;
       return matchesSearch && matchesSource && matchesCorretor;
     });
   }, [leads, searchTerm, filterSource, filterCorretor]);
