@@ -499,7 +499,7 @@ export default function LeadsCRM() {
     description: "",
     source: "",
     status: "novo",
-    corretorId: "nenhum",
+    
   });
 
   const sensors = useSensors(
