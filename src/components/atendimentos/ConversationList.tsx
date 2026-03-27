@@ -165,7 +165,7 @@ export function ConversationList({
                     <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold ${
                       isSelected ? "bg-primary/30 text-primary" : "bg-secondary text-muted-foreground"
                     }`}>
-                      {atd.clienteNome.substring(0, 2).toUpperCase()}
+                      {(atd.clienteNome || "??").substring(0, 2).toUpperCase()}
                     </div>
                     {atd.status !== "resolvido" && (
                       <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${

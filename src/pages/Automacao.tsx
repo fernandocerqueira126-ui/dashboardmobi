@@ -301,6 +301,10 @@ export default function Automacao() {
         timestamp: new Date().toISOString(),
         webhook_nome: webhook.nome,
         evento: webhook.evento,
+        name: "Lead de Teste Dashboard",
+        phone: "5511999999999",
+        message: "Mensagem de teste de integração",
+        source: "Botão Testar Dashboard"
       };
 
       const response = await fetch(webhook.url, {

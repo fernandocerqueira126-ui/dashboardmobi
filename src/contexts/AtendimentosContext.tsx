@@ -28,6 +28,7 @@ export interface Mensagem {
   texto: string;
   remetente: "cliente" | "atendente";
   timestamp: Date;
+  imageUrl?: string;
 }
 
 interface AtendimentoInput {
@@ -76,7 +77,8 @@ const mapRowToAtendimento = (row: AtendimentoRow, mensagens: MensagemRow[] = [])
     id: m.id,
     texto: m.texto,
     remetente: m.remetente as "cliente" | "atendente",
-    timestamp: new Date(m.created_at)
+    timestamp: new Date(m.created_at),
+    imageUrl: undefined // can be populated from row if needed in future
   }))
 });
 

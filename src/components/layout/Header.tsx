@@ -33,8 +33,8 @@ import {
 import { SystemClock } from "./SystemClock";
 
 interface HeaderProps {
-  title: string;
-  subtitle?: string;
+  title: string | React.ReactNode;
+  subtitle?: string | React.ReactNode;
   icon?: React.ReactNode;
 }
 

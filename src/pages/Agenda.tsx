@@ -51,6 +51,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useAgenda, Agendamento, statusOptions } from "@/contexts/AgendaContext";
 import { useColaboradores } from "@/contexts/ColaboradoresContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const timeSlots = [
   "07:00", "08:00", "09:00", "10:00", "11:00", "12:00",
@@ -215,9 +216,27 @@ export default function Agenda() {
     setIsModalOpen(true);
   };
 
-  const handleAgendamentoClick = (agendamento: Agendamento, e: React.MouseEvent) => {
+  const handleAgendamentoClick = async (agendamento: Agendamento, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingAgendamento(agendamento);
+
+    let leadDescription = agendamento.observacoes;
+    if (agendamento.lead_id) {
+      try {
+        const { data, error } = await supabase
+          .from("leads")
+          .select("description")
+          .eq("id", agendamento.lead_id)
+          .single();
+          
+        if (!error && data?.description) {
+          leadDescription = data.description;
+        }
+      } catch (err) {
+        console.error("Erro ao buscar detalhes do lead", err);
+      }
+    }
+
     setFormData({
       clienteNome: agendamento.clienteNome,
       clienteTelefone: agendamento.clienteTelefone,
@@ -225,8 +244,8 @@ export default function Agenda() {
       data: agendamento.data,
       horario: agendamento.horario,
       duracao: agendamento.duracao,
-      servico: agendamento.servico,
-      observacoes: agendamento.observacoes,
+      servico: agendamento.servico || "Visita Imobiliária",
+      observacoes: leadDescription || "",
       status: agendamento.status,
     });
     setIsModalOpen(true);

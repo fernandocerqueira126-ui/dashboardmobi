@@ -15,6 +15,7 @@ export interface Agendamento {
   servico: string;
   observacoes: string;
   status: string;
+  lead_id?: string | null;
 }
 
 export const statusOptions = [
@@ -63,6 +64,7 @@ const mapRowToAgendamento = (item: any): Agendamento => ({
   servico: item.servico || "",
   observacoes: item.observacoes || "",
   status: item.status || "agendado",
+  lead_id: item.lead_id || null,
 });
 
 export function AgendaProvider({ children }: { children: ReactNode }) {
@@ -139,6 +141,7 @@ export function AgendaProvider({ children }: { children: ReactNode }) {
           servico: data.servico,
           observacoes: data.observacoes,
           status: data.status,
+          lead_id: data.lead_id,
         }])
         .select()
         .single();
@@ -166,6 +169,7 @@ export function AgendaProvider({ children }: { children: ReactNode }) {
       if (updates.servico) supabaseUpdates.servico = updates.servico;
       if (updates.observacoes !== undefined) supabaseUpdates.observacoes = updates.observacoes;
       if (updates.status) supabaseUpdates.status = updates.status;
+      if (updates.lead_id !== undefined) supabaseUpdates.lead_id = updates.lead_id;
 
       const { data: updatedEntry, error } = await supabase
         .from('agendamentos')

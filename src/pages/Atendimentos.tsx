@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,12 +32,12 @@ import {
   Paperclip,
   Download,
 } from "lucide-react";
-import { useAtendimentos, Atendimento } from "@/contexts/AtendimentosContext";
 import { useLeads } from "@/contexts/LeadsContext";
 import { ConversationList } from "@/components/atendimentos/ConversationList";
 import { ChatPanel } from "@/components/atendimentos/ChatPanel";
 import { AtendimentoDetailSheet } from "@/components/atendimentos/AtendimentoDetailSheet";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const documentosChecklist = [
@@ -58,17 +58,31 @@ const imoveisInventario = [
   { id: "imovel-5", nome: "Terreno Lote 42 - Alphaville" },
 ];
 
+type WebhookEvento = {
+  id: string;
+  phone?: string | null;
+  sender_name?: string | null;
+  message?: string | null;
+  direction?: string | null;
+  timestamp?: string | null;
+  payload?: Record<string, unknown> | string | null;
+  created_at?: string | null;
+  evento?: string | null;
+};
+
 export default function Atendimentos() {
-  const { atendimentos, addAtendimento, updateAtendimento, deleteAtendimento, addMensagem, stats } = useAtendimentos();
   const { leads } = useLeads();
   const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
-  const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
+  const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
+  const [isConnected, setIsConnected] = useState(false);
+  const [allWebhookEvents, setAllWebhookEvents] = useState<WebhookEvento[]>([]);
   const [novoAtendimento, setNovoAtendimento] = useState({
     clienteId: "",
     assunto: "",
@@ -80,56 +94,8 @@ export default function Atendimentos() {
     docsRecebidos: [] as string[],
   });
 
-  const clientesDisponiveis = useMemo(() => leads.filter(l => l.status === "ganho"), [leads]);
-
-  const filteredAtendimentos = useMemo(() => {
-    return atendimentos.filter(atd => {
-      const matchSearch =
-        atd.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        atd.assunto.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchStatus = statusFilter === "todos" || atd.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [atendimentos, searchTerm, statusFilter]);
-
-  // Keep selected in sync with updated data
-  const activeAtendimento = useMemo(() => {
-    if (!selectedAtendimento) return filteredAtendimentos[0] || null;
-    return atendimentos.find(a => a.id === selectedAtendimento.id) || filteredAtendimentos[0] || null;
-  }, [selectedAtendimento, atendimentos, filteredAtendimentos]);
-
-  const handleCriarAtendimento = () => {
-    if (!novoAtendimento.clienteId || !novoAtendimento.assunto) {
-      toast({ title: "Campos obrigatórios", description: "Selecione um cliente e informe o assunto", variant: "destructive" });
-      return;
-    }
-    const cliente = clientesDisponiveis.find(c => c.id === novoAtendimento.clienteId);
-    if (!cliente) return;
-
-    const imovelSelecionado = imoveisInventario.find(i => i.id === novoAtendimento.imovelId);
-    const tipoLabel = novoAtendimento.tipoSolicitacao
-      ? ({ duvida_tecnica: "Dúvida Técnica", envio_documentos: "Envio de Documentos", proposta_compra: "Proposta de Compra", suporte_pos_venda: "Suporte Pós-Venda" }[novoAtendimento.tipoSolicitacao] || "")
-      : "";
-
-    const assuntoCompleto = `${tipoLabel ? `[${tipoLabel}] ` : ""}${novoAtendimento.assunto}${imovelSelecionado ? ` | Imóvel: ${imovelSelecionado.nome}` : ""}`;
-
-    addAtendimento({
-      clienteId: cliente.id,
-      clienteNome: cliente.name,
-      clienteEmail: cliente.email || null,
-      clienteTelefone: cliente.phone || null,
-      assunto: assuntoCompleto,
-      status: "aberto",
-      prioridade: novoAtendimento.prioridade,
-      origem: novoAtendimento.origem,
-      colaborador: "Equipe",
-    });
-
-    toast({ title: "Atendimento criado", description: `Novo atendimento para ${cliente.name}` });
-    setDialogOpen(false);
-    setNovoAtendimento({ clienteId: "", assunto: "", descricao: "", prioridade: "media", origem: "whatsapp", tipoSolicitacao: "", imovelId: "", docsRecebidos: [] });
-  };
-
+  const updateAtendimento = () => {};
+  const addMensagem = async () => {};
   const toggleDocRecebido = (docId: string) => {
     setNovoAtendimento(prev => ({
       ...prev,
@@ -138,6 +104,173 @@ export default function Atendimentos() {
         : [...prev.docsRecebidos, docId],
     }));
   };
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('webhook_eventos')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(2000);
+
+      if (error) {
+        console.error("Erro ao buscar histórico:", error);
+        return;
+      }
+      if (data) {
+        setAllWebhookEvents(data as WebhookEvento[]);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-webhook-eventos')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'webhook_eventos' },
+        (realtimePayload) => {
+          const newRow = realtimePayload.new as WebhookEvento;
+
+          setAllWebhookEvents(prev => {
+            if (prev.some(e => e.id === newRow.id)) return prev;
+            return [...prev, newRow];
+          });
+
+          const dir = newRow.direction || "cliente";
+          if (dir === 'cliente') {
+            const nome = newRow.sender_name || 'Cliente';
+            const msg = newRow.message || '...';
+            setAiSuggestion(`Sugestão IA: Olá ${nome.split(' ')[0]}! Recebi sua mensagem: "${msg}". Como posso ajudar?`);
+            toast({
+              title: "Nova mensagem!",
+              description: `${nome} enviou uma mensagem.`
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        setIsConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  const parsePayload = (raw: unknown): Record<string, unknown> => {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (typeof raw === 'object') return raw as Record<string, unknown>;
+    return {};
+  };
+
+  const liveAtendimentos = useMemo(() => {
+    const groups: Record<string, {
+      id: string;
+      clienteId: string | null;
+      clienteNome: string;
+      clienteTelefone: string;
+      assunto: string;
+      status: string;
+      prioridade: string;
+      origem: string;
+      criadoEm: string;
+      atualizadoEm: string;
+      mensagens: Array<{ id: string; texto: string; remetente: string; timestamp: Date; imageUrl?: string }>;
+    }> = {};
+
+    const safeParseDate = (dateVal: unknown): Date => {
+      if (!dateVal) return new Date();
+      const d = new Date(dateVal as string);
+      return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    const normalizePhone = (p: string) => p.replace(/\D/g, "");
+
+    allWebhookEvents.forEach(evt => {
+      const payload = parsePayload(evt.payload);
+
+      const phone       = evt.phone      || (payload.phone as string)      || (payload.sender_phone as string) || (payload.from as string);
+      const senderName  = evt.sender_name || (payload.sender_name as string) || (payload.pushName as string)   || (payload.contact_name as string) || (payload.name as string);
+      const messageText = evt.message != null ? evt.message : ((payload.message ?? payload.text ?? payload.body ?? payload.content ?? "") as string);
+      const direction   = evt.direction  || (payload.direction as string)  || "cliente";
+      const imageUrl    = (payload.image_url ?? payload.imageUrl ?? payload.picture) as string | undefined;
+
+      if (!phone || typeof phone !== 'string') return;
+      if ((messageText === "" || messageText == null) && !imageUrl && direction !== "cliente") return;
+
+      const normalized = normalizePhone(phone);
+
+      if (!groups[normalized]) {
+        const lead = leads.find(l => {
+          const lp = l.phone ? normalizePhone(l.phone) : "";
+          return lp === normalized || (lp && normalized.includes(lp)) || (normalized && lp.includes(normalized));
+        });
+        const fallbackName = lead ? lead.name : "Cliente WhatsApp";
+
+        groups[normalized] = {
+          id: phone,
+          clienteId: lead?.id || null,
+          clienteNome: senderName || fallbackName,
+          clienteTelefone: phone,
+          assunto: "Conversa WhatsApp",
+          status: "aberto",
+          prioridade: "media",
+          origem: "whatsapp",
+          criadoEm: evt.created_at || new Date().toISOString(),
+          atualizadoEm: evt.created_at || new Date().toISOString(),
+          mensagens: []
+        };
+      }
+
+      if (senderName && groups[normalized].clienteNome === "Cliente WhatsApp") {
+        groups[normalized].clienteNome = senderName;
+      }
+
+      groups[normalized].mensagens.push({
+        id: evt.id,
+        texto: messageText || "",
+        remetente: direction === "cliente" ? "cliente" : "atendente",
+        timestamp: safeParseDate(evt.created_at || new Date().toISOString()),
+        imageUrl: imageUrl
+      });
+    });
+
+    return Object.values(groups).sort((a, b) => {
+      const lastA = a.mensagens[a.mensagens.length - 1]?.timestamp.getTime() || 0;
+      const lastB = b.mensagens[b.mensagens.length - 1]?.timestamp.getTime() || 0;
+      return lastB - lastA;
+    });
+  }, [allWebhookEvents, leads]);
+
+  const filteredAtendimentos = useMemo(() => {
+    return liveAtendimentos.filter(atd => {
+      const matchSearch =
+        (atd.clienteNome || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (atd.clienteTelefone || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === "todos" || atd.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [liveAtendimentos, searchTerm, statusFilter]);
+
+  const activeAtendimento = useMemo(() => {
+    if (!selectedPhone) return filteredAtendimentos[0] || null;
+    return liveAtendimentos.find(a => a.id === selectedPhone) || filteredAtendimentos[0] || null;
+  }, [selectedPhone, liveAtendimentos, filteredAtendimentos]);
+
+  const stats = useMemo(() => {
+    return {
+      abertos: liveAtendimentos.filter(a => a.status === 'aberto').length,
+      emAndamento: liveAtendimentos.filter(a => a.status === 'em_andamento').length,
+      resolvidos: liveAtendimentos.filter(a => a.status === 'resolvido').length,
+      tempoMedio: "15 min"
+    };
+  }, [liveAtendimentos]);
 
   const handleExportCSV = () => {
     const headers = ["Cliente", "Assunto", "Status", "Prioridade", "Origem", "Criado em"];
@@ -156,12 +289,19 @@ export default function Atendimentos() {
     <div className="flex flex-col h-screen">
       <Header
         title="Central de Suporte"
-        subtitle="Conversas sincronizadas com WhatsApp via n8n"
+        subtitle={
+          <span className="flex items-center gap-1.5">
+            Conversas sincronizadas com WhatsApp via Supabase Realtime
+            <span
+              className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`}
+              title={isConnected ? "Conectado ao Supabase Realtime" : "Desconectado do Realtime"}
+            />
+          </span>
+        }
         icon={<HeadphonesIcon className="w-5 h-5" />}
       />
 
       <div className="flex-1 overflow-hidden flex flex-col">
-        {/* Stats Bar */}
         <div className="px-6 pt-4 pb-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="card-metric flex items-center gap-3 py-3 px-4">
@@ -202,7 +342,6 @@ export default function Atendimentos() {
             </div>
           </div>
 
-          {/* Action bar */}
           <div className="flex items-center justify-end gap-2 mt-3">
             <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 text-xs">
               <Download className="w-3.5 h-3.5" /> Exportar
@@ -213,14 +352,12 @@ export default function Atendimentos() {
           </div>
         </div>
 
-        {/* WhatsApp Web Layout */}
         <div className="flex-1 mx-6 mb-4 rounded-xl border border-border overflow-hidden flex min-h-0">
-          {/* Left: Conversation List */}
           <div className="w-[360px] shrink-0">
             <ConversationList
               atendimentos={filteredAtendimentos}
               selectedId={activeAtendimento?.id || null}
-              onSelect={setSelectedAtendimento}
+              onSelect={(a) => setSelectedPhone(a.id)}
               onNewClick={() => setDialogOpen(true)}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -229,30 +366,47 @@ export default function Atendimentos() {
             />
           </div>
 
-          {/* Right: Chat Panel */}
           <ChatPanel
-            atendimento={activeAtendimento}
-            onSendMessage={addMensagem}
-            onUpdateStatus={updateAtendimento}
-            onDelete={(id) => {
-              deleteAtendimento(id);
-              setSelectedAtendimento(null);
+            atendimento={activeAtendimento as any}
+            isConnected={isConnected}
+            suggestion={aiSuggestion}
+            onUseSuggestion={() => {
+              if (aiSuggestion) {
+                setAiSuggestion(null);
+              }
             }}
+            onClearSuggestion={() => setAiSuggestion(null)}
+            onSendMessage={async (id, msg) => {
+              try {
+                await fetch("https://n8n.autoia.store/webhook/dashboard-send-message", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    phone: id,
+                    message: msg.texto
+                  })
+                });
+                toast({ title: "Mensagem enviada", description: "Aguardando sincronização..." });
+              } catch (e) {
+                console.error("Erro ao enviar para n8n", e);
+                toast({ title: "Erro no envio", description: "Verifique a conexão.", variant: "destructive" });
+              }
+            }}
+            onUpdateStatus={() => {}}
+            onDelete={() => {}}
             onOpenDetails={() => setSheetOpen(true)}
           />
         </div>
       </div>
 
-      {/* Detail Sheet */}
       <AtendimentoDetailSheet
-        atendimento={activeAtendimento}
+        atendimento={activeAtendimento as any}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         onUpdate={updateAtendimento}
         onAddMensagem={addMensagem}
       />
 
-      {/* New Atendimento Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -264,102 +418,15 @@ export default function Atendimentos() {
 
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Cliente *</label>
-              <Select value={novoAtendimento.clienteId} onValueChange={(v) => setNovoAtendimento({ ...novoAtendimento, clienteId: v })}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientesDisponiveis.length === 0 ? (
-                    <SelectItem value="none" disabled>Nenhum cliente disponível</SelectItem>
-                  ) : (
-                    clientesDisponiveis.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Tipo de Solicitação</label>
-              <Select value={novoAtendimento.tipoSolicitacao} onValueChange={(v) => setNovoAtendimento({ ...novoAtendimento, tipoSolicitacao: v })}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="duvida_tecnica"><span className="flex items-center gap-2"><HelpCircle className="w-3.5 h-3.5" /> Dúvida Técnica</span></SelectItem>
-                  <SelectItem value="envio_documentos"><span className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Envio de Documentos</span></SelectItem>
-                  <SelectItem value="proposta_compra"><span className="flex items-center gap-2"><Home className="w-3.5 h-3.5" /> Proposta de Compra</span></SelectItem>
-                  <SelectItem value="suporte_pos_venda"><span className="flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5" /> Suporte Pós-Venda</span></SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Vínculo com Imóvel</label>
-              <Select value={novoAtendimento.imovelId} onValueChange={(v) => setNovoAtendimento({ ...novoAtendimento, imovelId: v })}>
-                <SelectTrigger className="bg-secondary border-border"><SelectValue placeholder="Selecione o imóvel (opcional)" /></SelectTrigger>
-                <SelectContent>
-                  {imoveisInventario.map((i) => <SelectItem key={i.id} value={i.id}><span className="flex items-center gap-2"><Home className="w-3.5 h-3.5 text-muted-foreground" />{i.nome}</span></SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <label className="text-sm text-muted-foreground mb-1 block">Assunto *</label>
               <Input placeholder="Ex: Documentação para financiamento" value={novoAtendimento.assunto} onChange={(e) => setNovoAtendimento({ ...novoAtendimento, assunto: e.target.value })} className="bg-secondary border-border" />
             </div>
 
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Descrição</label>
-              <Textarea placeholder="Descreva o atendimento..." value={novoAtendimento.descricao} onChange={(e) => setNovoAtendimento({ ...novoAtendimento, descricao: e.target.value })} className="bg-secondary border-border" rows={3} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Origem</label>
-                <Select value={novoAtendimento.origem} onValueChange={(v) => setNovoAtendimento({ ...novoAtendimento, origem: v })}>
-                  <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="email">E-mail</SelectItem>
-                    <SelectItem value="telefone">Telefone</SelectItem>
-                    <SelectItem value="presencial">Presencial</SelectItem>
-                    <SelectItem value="crm">CRM</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Prioridade</label>
-                <Select value={novoAtendimento.prioridade} onValueChange={(v: "alta" | "media" | "baixa") => setNovoAtendimento({ ...novoAtendimento, prioridade: v })}>
-                  <SelectTrigger className="bg-secondary border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Média</SelectItem>
-                    <SelectItem value="baixa">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block flex items-center gap-1.5">
-                <Paperclip className="w-3.5 h-3.5" /> Checklist de Documentos
-              </label>
-              <div className="bg-secondary/50 rounded-lg p-3 space-y-2.5 border border-border/50">
-                {documentosChecklist.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-2.5">
-                    <Checkbox id={doc.id} checked={novoAtendimento.docsRecebidos.includes(doc.id)} onCheckedChange={() => toggleDocRecebido(doc.id)} />
-                    <label htmlFor={doc.id} className={`text-sm cursor-pointer transition-colors ${novoAtendimento.docsRecebidos.includes(doc.id) ? "text-emerald-400 line-through" : "text-foreground"}`}>
-                      {doc.label}
-                    </label>
-                    {novoAtendimento.docsRecebidos.includes(doc.id) && <CheckCircle className="w-3.5 h-3.5 text-emerald-400 ml-auto" />}
-                  </div>
-                ))}
-                <p className="text-[10px] text-muted-foreground pt-1">{novoAtendimento.docsRecebidos.length}/{documentosChecklist.length} documentos recebidos</p>
-              </div>
-            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => setDialogOpen(false)}>Criar Atendimento</Button>
+            </DialogFooter>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCriarAtendimento}>Criar Atendimento</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
