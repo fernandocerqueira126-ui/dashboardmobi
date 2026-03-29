@@ -89,10 +89,11 @@ import {
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import { useTime } from "@/contexts/TimeContext";
 import { useLeads, Lead, sourceOptions, Column } from "@/contexts/LeadsContext";
 import { useColaboradores } from "@/contexts/ColaboradoresContext";
 import { useNavigate } from "react-router-dom";
@@ -149,15 +150,19 @@ function DraggableLeadCard({
     zIndex: isDragging ? 1000 : 1,
   };
   
+  const { currentTime } = useTime();
   const color = column?.color || "#3B82F6";
 
-  const timeAgo = (() => {
+  const timeAgo = useMemo(() => {
     try {
-      return formatDistanceToNow(new Date(lead.date), { addSuffix: false, locale: ptBR });
+      if (!lead.date) return "";
+      const leadDate = new Date(lead.date);
+      if (isNaN(leadDate.getTime())) return "";
+      return formatDistance(leadDate, currentTime, { addSuffix: false, locale: ptBR });
     } catch {
       return "";
     }
-  })();
+  }, [lead.date, currentTime]);
 
   return (
     <div
@@ -188,6 +193,18 @@ function DraggableLeadCard({
 
       {lead.email && (
         <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+      )}
+
+      {lead.value !== undefined && (
+        <p className="text-xs text-warning font-medium mt-1">
+          {Number(lead.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </p>
+      )}
+      
+      {lead.linkImovelInteresse && (
+        <p className="text-[10px] text-primary/80 font-medium truncate mt-0.5">
+          Ref: {lead.linkImovelInteresse}
+        </p>
       )}
 
 
@@ -392,11 +409,19 @@ function LeadDetailSheet({
         {/* Real Estate Info */}
         <div className="py-4 space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Imóvel de Interesse</h4>
-          <div className="flex items-center gap-3 text-sm">
-            <DollarSign className="w-4 h-4 text-warning" />
-            <span>Valor estimado: <span className="font-medium text-warning">R$ {lead.value.toLocaleString("pt-BR")}</span></span>
-          </div>
-          {lead.paidValue && lead.paidValue > 0 && (
+          {lead.value !== undefined && (
+            <div className="flex items-center gap-3 text-sm">
+              <DollarSign className="w-4 h-4 text-warning" />
+              <span>Valor estimado: <span className="font-medium text-warning">{Number(lead.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></span>
+            </div>
+          )}
+          {lead.linkImovelInteresse && (
+            <div className="flex items-center gap-3 text-sm">
+              <Home className="w-4 h-4 text-primary" />
+              <span>Referência: <span className="font-medium text-primary">{lead.linkImovelInteresse}</span></span>
+            </div>
+          )}
+          {lead.paidValue !== undefined && lead.paidValue > 0 && (
             <div className="flex items-center gap-3 text-sm">
               <DollarSign className="w-4 h-4 text-emerald-400" />
               <span>Valor pago: <span className="font-medium text-emerald-400">R$ {lead.paidValue.toLocaleString("pt-BR")}</span></span>
@@ -519,7 +544,7 @@ export default function LeadsCRM() {
       const matchesCorretor = true;
       return matchesSearch && matchesSource && matchesCorretor;
     });
-  }, [leads, searchTerm, filterSource, filterCorretor]);
+  }, [leads, searchTerm, filterSource]);
 
   const getLeadsByStatus = (status: string) =>
     filteredLeads.filter((lead) => lead.status === status);
