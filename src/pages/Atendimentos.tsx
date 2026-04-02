@@ -176,8 +176,8 @@ export default function Atendimentos() {
       clienteNome: string;
       clienteTelefone: string;
       assunto: string;
-      status: string;
-      prioridade: string;
+      status: "aberto" | "em_andamento" | "resolvido";
+      prioridade: "alta" | "media" | "baixa";
       origem: string;
       criadoEm: string;
       atualizadoEm: string;
