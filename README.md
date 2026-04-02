@@ -9,19 +9,30 @@
   <img src="https://img.shields.io/badge/Supabase-181818?style=for-the-badge&logo=supabase&logoColor=3ECF8E" alt="Supabase" />
 </p>
 
+---
+
 ## 🇧🇷 Português (Brasil)
 
-### Sobre o Projeto
-O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de Relacionamento com o Cliente) focado no setor imobiliário. Além do gerenciamento em formato Kanban altamente configurável, a plataforma fornece ferramentas para administrar corretores, métricas de vendas e integração com Webhooks em tempo real. O uso do Supabase garante persistência e autenticação robustas. 
+### 📋 Sobre o Projeto
+O **Dashboard Mobi** é um ecossistema CRM de alta performance desenvolvido especificamente para o mercado imobiliário. Focado em agilidade e conversão, o sistema une uma interface visual moderna com poderosas automações e integridade de dados via Supabase.
 
-### Funcionalidades Principais
-- **Kanban Interativo de Leads**: Cards que podem ser movidos com arrastar-e-soltar (`dnd-kit/sortable`). As colunas podem ser adicionadas, removidas e ter suas cores HEX personalizadas na nova página dedicada de Configurações ( `/leads/config` ).
-- **Interface Otimizada (UI/UX)**: Design em *dark mode* polido, utilizando bibliotecas maduras como **Shadcn-ui** provendo alta responsividade.
-- **Relatórios Avançados**: Acompanhamento de metas de vendas (visuais), conversões e taxa de fechamento.
-- **Integração Realtime (Supabase)**: Atualizações de leads, corretores atrelados e Webhooks de eventos totalmente integrados.
-- **Proteção Completa**: Variáveis de ambiente isoladas, mitigando o risco de exposição de chaves através de boas práticas.
+### 🚀 Funcionalidades de Destaque
+- **Gestão de Leads (Kanban)**: Fluxo de trabalho intuitivo com arrastar-e-soltar (`dnd-kit`). Configuração total de colunas e cores HEX em `/leads/config`.
+- **Central de Atendimentos**: Chat em tempo real para comunicação direta (WhatsApp/Web) e histórico de interações.
+- **Automação & IA**: Módulo de automação nativo para workflows de nutrição e integração com agentes inteligentes.
+- **Agenda Inteligente**: Gestão de compromissos, visitas e lembretes integrados ao fluxo do lead.
+- **Gerador de Propostas**: Criação de propostas comerciais personalizadas com suporte a RAG para busca de propriedades ideais.
+- **Dashboard de Métricas**: Visualização de KPIs, metas de corretores e funil de vendas em tempo real.
 
-### Como Rodar (Desenvolvimento)
+### 🛠️ Tech Stack
+- **Frontend**: React 18, TypeScript, Vite.
+- **Styling**: Tailwind CSS, Shadcn/UI, Lucide React (Ícones).
+- **Gerenciamento de Estado**: TanStack Query (React Query).
+- **Backend & DB**: Supabase (Auth, Postgres, Realtime, Edge Functions).
+- **Formulários**: React Hook Form + Zod.
+- **Animações**: Tailwind Animate e Radix UI primitives.
+
+### 💻 Como Rodar (Desenvolvimento)
 1. **Clone o repositório:**
    ```bash
    git clone https://github.com/fernandocerqueira126-ui/dashboardmobi.git
@@ -30,15 +41,15 @@ O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de R
    ```bash
    npm install
    ```
-3. **Configure as Variáveis:** 
-   Crie um arquivo `.env` contendo:
+3. **Variáveis de Ambiente:** 
+   Crie um arquivo `.env` (baseado no `.env.example`, se disponível):
    ```env
    VITE_SUPABASE_URL="SUA_URL"
    VITE_SUPABASE_ANON_KEY="SUA_CHAVE"
    ```
-4. **Configure o Banco de Dados:**
-   Abra o arquivo `database_schema.sql` presente na raiz do repositório, copie todo o seu conteúdo e execute no **SQL Editor** do seu painel do Supabase. Isso replicará instantaneamente todas as tabelas, Storage, Webhooks e Políticas de segurança.
-5. **Suba o servidor:**
+4. **Banco de Dados:**
+   Execute o script `database_schema.sql` no **SQL Editor** do seu projeto Supabase para configurar tabelas, triggers e RLS.
+5. **Run:**
    ```bash
    npm run dev
    ```
@@ -47,17 +58,25 @@ O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de R
 
 ## 🇺🇸 English
 
-### About the Project
-**Dashboard Mobi** is a full-fledged, modern CRM (Customer Relationship Management) system tailored for the real estate domain. Along with highly-customizable Kanban management, the platform brings powerful tools out of the box for handling brokers, sales metrics, and real-time Webhook integrations. The usage of Supabase ensures a robust persistence and authentication layer.
+### 📋 About the Project
+**Dashboard Mobi** is a high-performance CRM ecosystem developed specifically for the real estate market. Focused on agility and conversion, the system combines a modern visual interface with powerful automations and data integrity via Supabase.
 
-### Key Features
-- **Interactive Leads Kanban**: Drag-and-drop workflow (`dnd-kit/sortable`). Kanban columns are entirely dynamic and customizable; users can add, remove, organize, and pick HEX colors across a dedicated Configuration page (`/leads/config`).
-- **Premium UI/UX**: Detailed dark mode utilizing **Shadcn-ui** and Tailwind CSS with responsive, sleek styles.
-- **Advanced Reports**: Real-time sales targets, funnel conversion tracking, and comprehensive statistical overviews.
-- **Real-time Backend (Supabase)**: Live leads update, broker attribution, integrated events, and serverless edge functions.
-- **Robust Security**: Decoupled environment variables with standard Vite env injections (`import.meta.env`).
+### 🚀 Key Features
+- **Lead Management (Kanban)**: Intuitive drag-and-drop workflow (`dnd-kit`). Full customization of columns and HEX colors via `/leads/config`.
+- **Customer Service Hub**: Real-time chat for direct communication and full interaction history.
+- **Automation & AI**: Native automation module for nurturing workflows and integration with intelligent agents.
+- **Smart Calendar**: Appointment management, property viewings, and reminders integrated into the lead flow.
+- **Proposal Generator**: Custom commercial proposal creation with RAG support for finding ideal properties.
+- **Metrics Dashboard**: Real-time KPI visualization, broker targets, and sales funnel tracking.
 
-### How to Run Locally
+### 🛠️ Tech Stack
+- **Frontend**: React 18, TypeScript, Vite.
+- **Styling**: Tailwind CSS, Shadcn/UI, Lucide React.
+- **State Management**: TanStack Query (React Query).
+- **Backend & DB**: Supabase (Auth, Postgres, Realtime, Edge Functions).
+- **Testing**: Vitest & Testing Library.
+
+### 💻 How to Run Locally
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/fernandocerqueira126-ui/dashboardmobi.git
@@ -66,18 +85,19 @@ O **Dashboard Mobi** é um sistema completo e moderno de CRM (Gerenciamento de R
    ```bash
    npm install
    ```
-3. **Setup environment:** 
-   Create a `.env` file referencing your keys:
+3. **Environment Setup:** 
+   Create a `.env` file:
    ```env
    VITE_SUPABASE_URL="YOUR_URL"
    VITE_SUPABASE_ANON_KEY="YOUR_KEY"
    ```
-4. **Setup the Database:**
-   Open the `database_schema.sql` file located in the root folder, copy all of its content, and execute it within your Supabase project's **SQL Editor**. This will instantly replicate all tables, storage, webhooks, and security policies required for the application.
-5. **Start the server:**
+4. **Database Configuration:**
+   Execute the `database_schema.sql` script within your Supabase **SQL Editor** to instantly set up all tables and security policies.
+5. **Start:**
    ```bash
    npm run dev
    ```
 
 ---
-*Built with React, Vite, Shadcn UI and Supabase.*
+*Feito por [Fernando Cerqueira](https://github.com/fernandocerqueira126) • © 2026 DashboardMobi*
+
