@@ -179,8 +179,8 @@ export default function Atendimentos() {
       status: "aberto" | "em_andamento" | "resolvido";
       prioridade: "alta" | "media" | "baixa";
       origem: string;
-      criadoEm: string;
-      atualizadoEm: string;
+      criadoEm: Date;
+      atualizadoEm: Date;
       mensagens: Array<{ id: string; texto: string; remetente: string; timestamp: Date; imageUrl?: string }>;
     }> = {};
 
