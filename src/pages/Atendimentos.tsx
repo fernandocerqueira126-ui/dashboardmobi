@@ -176,12 +176,12 @@ export default function Atendimentos() {
       clienteNome: string;
       clienteTelefone: string;
       assunto: string;
-      status: string;
-      prioridade: string;
+      status: "aberto" | "em_andamento" | "resolvido";
+      prioridade: "alta" | "media" | "baixa";
       origem: string;
-      criadoEm: string;
-      atualizadoEm: string;
-      mensagens: Array<{ id: string; texto: string; remetente: string; timestamp: Date; imageUrl?: string }>;
+      criadoEm: Date;
+      atualizadoEm: Date;
+      mensagens: Array<{ id: string; texto: string; remetente: "cliente" | "atendente"; timestamp: Date; imageUrl?: string }>;
     }> = {};
 
     const safeParseDate = (dateVal: unknown): Date => {
@@ -222,8 +222,8 @@ export default function Atendimentos() {
           status: "aberto",
           prioridade: "media",
           origem: "whatsapp",
-          criadoEm: evt.created_at || new Date().toISOString(),
-          atualizadoEm: evt.created_at || new Date().toISOString(),
+          criadoEm: safeParseDate(evt.created_at),
+          atualizadoEm: safeParseDate(evt.created_at),
           mensagens: []
         };
       }
