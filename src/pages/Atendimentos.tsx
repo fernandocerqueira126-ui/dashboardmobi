@@ -85,7 +85,7 @@ export default function Atendimentos() {
   const { leads } = useLeads();
   const { toast } = useToast();
   const { 
-    atendimentos: liveAtendimentos, 
+    atendimentos: contextAtendimentos, 
     isLoading, 
     addMensagem: contextAddMensagem, 
     updateAtendimento: contextUpdateAtendimento 
@@ -102,6 +102,7 @@ export default function Atendimentos() {
 
   // Connectivity state - now reflects the context/Supabase initialization
   const [isConnected, setIsConnected] = useState(true);
+  const [allWebhookEvents, setAllWebhookEvents] = useState<WebhookEvento[]>([]);
 
   const [novoAtendimento, setNovoAtendimento] = useState({
     clienteId: "",
@@ -140,7 +141,148 @@ export default function Atendimentos() {
         ? prev.docsRecebidos.filter(d => d !== docId)
         : [...prev.docsRecebidos, docId],
     }));
+  };  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('webhook_eventos')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .limit(2000);
+
+      if (error) {
+        console.error("Erro ao buscar histórico:", error);
+        return;
+      }
+      if (data) {
+        setAllWebhookEvents(data as WebhookEvento[]);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-webhook-eventos')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'webhook_eventos' },
+        (realtimePayload) => {
+          const newRow = realtimePayload.new as WebhookEvento;
+
+          setAllWebhookEvents(prev => {
+            if (prev.some(e => e.id === newRow.id)) return prev;
+            return [...prev, newRow];
+          });
+
+          const dir = newRow.direction || "cliente";
+          if (dir === 'cliente') {
+            const nome = newRow.sender_name || 'Cliente';
+            const msg = newRow.message || '...';
+            setAiSuggestion(`Sugestão IA: Olá ${nome.split(' ')[0]}! Recebi sua mensagem: "${msg}". Como posso ajudar?`);
+            toast({
+              title: "Nova mensagem!",
+              description: `${nome} enviou uma mensagem.`
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        setIsConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  const parsePayload = (raw: unknown): Record<string, unknown> => {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    if (typeof raw === 'object') return raw as Record<string, unknown>;
+    return {};
   };
+
+  const liveAtendimentos = useMemo(() => {
+    const groups: Record<string, {
+      id: string;
+      clienteId: string | null;
+      clienteNome: string;
+      clienteTelefone: string;
+      assunto: string;
+      status: "aberto" | "em_andamento" | "resolvido";
+      prioridade: "alta" | "media" | "baixa";
+      origem: string;
+      criadoEm: Date;
+      atualizadoEm: Date;
+      mensagens: Array<{ id: string; texto: string; remetente: "cliente" | "atendente"; timestamp: Date; imageUrl?: string }>;
+    }> = {};
+
+    const safeParseDate = (dateVal: unknown): Date => {
+      if (!dateVal) return new Date();
+      const d = new Date(dateVal as string);
+      return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    const normalizePhone = (p: string) => p.replace(/\D/g, "");
+
+    allWebhookEvents.forEach(evt => {
+      const payload = parsePayload(evt.payload);
+
+      const phone       = evt.phone      || (payload.phone as string)      || (payload.sender_phone as string) || (payload.from as string);
+      const senderName  = evt.sender_name || (payload.sender_name as string) || (payload.pushName as string)   || (payload.contact_name as string) || (payload.name as string);
+      const messageText = evt.message != null ? evt.message : ((payload.message ?? payload.text ?? payload.body ?? payload.content ?? "") as string);
+      const direction   = evt.direction  || (payload.direction as string)  || "cliente";
+      const imageUrl    = (payload.image_url ?? payload.imageUrl ?? payload.picture) as string | undefined;
+
+      if (!phone || typeof phone !== 'string') return;
+      if ((messageText === "" || messageText == null) && !imageUrl && direction !== "cliente") return;
+
+      const normalized = normalizePhone(phone);
+
+      if (!groups[normalized]) {
+        const lead = leads.find(l => {
+          const lp = l.phone ? normalizePhone(l.phone) : "";
+          return lp === normalized || (lp && normalized.includes(lp)) || (normalized && lp.includes(normalized));
+        });
+        const fallbackName = lead ? lead.name : "Cliente WhatsApp";
+
+        groups[normalized] = {
+          id: phone,
+          clienteId: lead?.id || null,
+          clienteNome: senderName || fallbackName,
+          clienteTelefone: phone,
+          assunto: "Conversa WhatsApp",
+          status: "aberto",
+          prioridade: "media",
+          origem: "whatsapp",
+          criadoEm: safeParseDate(evt.created_at),
+          atualizadoEm: safeParseDate(evt.created_at),
+          mensagens: []
+        };
+      }
+
+      if (senderName && groups[normalized].clienteNome === "Cliente WhatsApp") {
+        groups[normalized].clienteNome = senderName;
+      }
+
+      groups[normalized].mensagens.push({
+        id: evt.id,
+        texto: messageText || "",
+        remetente: direction === "cliente" ? "cliente" : "atendente",
+        timestamp: safeParseDate(evt.created_at || new Date().toISOString()),
+        imageUrl: imageUrl
+      });
+    });
+
+    return Object.values(groups).sort((a, b) => {
+      const lastA = a.mensagens[a.mensagens.length - 1]?.timestamp.getTime() || 0;
+      const lastB = b.mensagens[b.mensagens.length - 1]?.timestamp.getTime() || 0;
+      return lastB - lastA;
+    });
+  }, [allWebhookEvents, leads]);
 
   const filteredAtendimentos = useMemo(() => {
     return liveAtendimentos.filter(atd => {

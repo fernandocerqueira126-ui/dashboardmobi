@@ -84,6 +84,7 @@ export type Database = {
           colaborador: string | null
           created_at: string
           id: string
+          metadata: Json | null
           origem: string | null
           prioridade: string
           status: string
@@ -98,6 +99,7 @@ export type Database = {
           colaborador?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           origem?: string | null
           prioridade?: string
           status?: string
@@ -112,6 +114,7 @@ export type Database = {
           colaborador?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           origem?: string | null
           prioridade?: string
           status?: string
@@ -149,6 +152,30 @@ export type Database = {
           status?: string
           telefone?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      imobiliaria_rag: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
         }
         Relationships: []
       }
@@ -283,38 +310,53 @@ export type Database = {
       webhook_eventos: {
         Row: {
           created_at: string
+          direction: string | null
           erro: string | null
           evento: string
           id: string
+          message: string | null
           payload: Json | null
+          phone: string | null
+          sender_name: string | null
           status: string
           status_code: number | null
           tempo_resposta: number | null
-          webhook_id: string
+          timestamp: string | null
+          webhook_id: string | null
           webhook_nome: string
         }
         Insert: {
           created_at?: string
+          direction?: string | null
           erro?: string | null
           evento: string
           id?: string
+          message?: string | null
           payload?: Json | null
+          phone?: string | null
+          sender_name?: string | null
           status?: string
           status_code?: number | null
           tempo_resposta?: number | null
-          webhook_id: string
+          timestamp?: string | null
+          webhook_id?: string | null
           webhook_nome: string
         }
         Update: {
           created_at?: string
+          direction?: string | null
           erro?: string | null
           evento?: string
           id?: string
+          message?: string | null
           payload?: Json | null
+          phone?: string | null
+          sender_name?: string | null
           status?: string
           status_code?: number | null
           tempo_resposta?: number | null
-          webhook_id?: string
+          timestamp?: string | null
+          webhook_id?: string | null
           webhook_nome?: string
         }
         Relationships: [
@@ -377,6 +419,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_backfill_webhook_campos: { Args: never; Returns: undefined }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -386,6 +429,15 @@ export type Database = {
         Returns: boolean
       }
       lead_stage_order: { Args: { p_status: string }; Returns: number }
+      match_documents: {
+        Args: { filter?: Json; match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
       mover_lead_contato_inicial: {
         Args: { p_phone: string }
         Returns: undefined
