@@ -222,8 +222,8 @@ export default function Atendimentos() {
           status: "aberto",
           prioridade: "media",
           origem: "whatsapp",
-          criadoEm: evt.created_at || new Date().toISOString(),
-          atualizadoEm: evt.created_at || new Date().toISOString(),
+          criadoEm: safeParseDate(evt.created_at),
+          atualizadoEm: safeParseDate(evt.created_at),
           mensagens: []
         };
       }
