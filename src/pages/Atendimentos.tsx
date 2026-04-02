@@ -181,7 +181,7 @@ export default function Atendimentos() {
       origem: string;
       criadoEm: Date;
       atualizadoEm: Date;
-      mensagens: Array<{ id: string; texto: string; remetente: string; timestamp: Date; imageUrl?: string }>;
+      mensagens: Array<{ id: string; texto: string; remetente: "cliente" | "atendente"; timestamp: Date; imageUrl?: string }>;
     }> = {};
 
     const safeParseDate = (dateVal: unknown): Date => {
