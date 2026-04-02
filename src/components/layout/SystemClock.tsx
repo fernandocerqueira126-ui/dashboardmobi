@@ -1,16 +1,8 @@
-import { useState, useEffect } from "react";
 import { Clock, Calendar } from "lucide-react";
+import { useTime } from "@/contexts/TimeContext";
 
 export function SystemClock() {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
+  const { currentTime: time } = useTime();
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("pt-BR", {

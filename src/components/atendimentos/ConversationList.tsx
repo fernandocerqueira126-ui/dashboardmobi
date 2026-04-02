@@ -1,26 +1,6 @@
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import {
-  Search,
-  Filter,
-  Plus,
-  MessageSquare,
-  User,
-  Check,
-  CheckCheck,
-} from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import React from "react";
 import { Atendimento } from "@/contexts/AtendimentosContext";
-import { format } from "date-fns";
+import { ConversationItem } from "./ConversationItem";
 
 interface ConversationListProps {
   atendimentos: Atendimento[];
@@ -33,19 +13,14 @@ interface ConversationListProps {
   onStatusFilterChange: (value: string) => void;
 }
 
-const statusColors: Record<string, string> = {
-  aberto: "border-l-yellow-500",
-  em_andamento: "border-l-blue-500",
-  resolvido: "border-l-emerald-500",
-};
-
-const origemIcons: Record<string, string> = {
-  whatsapp: "🟢",
-  email: "📧",
-  telefone: "📞",
-  presencial: "🏢",
-  crm: "💼",
-};
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  Search,
+  Plus,
+  MessageSquare,
+} from "lucide-react";
 
 export function ConversationList({
   atendimentos,
@@ -57,31 +32,25 @@ export function ConversationList({
   statusFilter,
   onStatusFilterChange,
 }: ConversationListProps) {
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const d = new Date(date);
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / 86400000);
+  // Sorting: Pending first, then by last message date
+  const sortedAtendimentos = React.useMemo(() => {
+    return [...atendimentos].sort((a, b) => {
+      const aUnread = a.mensagens.filter(m => m.remetente === "cliente").length > 0 && a.status !== "resolvido";
+      const bUnread = b.mensagens.filter(m => m.remetente === "cliente").length > 0 && b.status !== "resolvido";
+      
+      if (aUnread && !bUnread) return -1;
+      if (!aUnread && bUnread) return 1;
 
-    if (diffDays === 0) return format(d, "HH:mm");
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return format(d, "EEE");
-    return format(d, "dd/MM/yyyy");
-  };
-
-  const getLastMessage = (atd: Atendimento) => {
-    if (atd.mensagens.length === 0) return "Nenhuma mensagem ainda";
-    const last = atd.mensagens[atd.mensagens.length - 1];
-    const prefix = last.remetente === "atendente" ? "Você: " : "";
-    return `${prefix}${last.texto}`;
-  };
-
-  const getUnreadCount = (atd: Atendimento) => {
-    // Simulate unread: count client messages (in real app, track read status)
-    return atd.mensagens.filter(m => m.remetente === "cliente").length > 0 && atd.status !== "resolvido"
-      ? atd.mensagens.filter(m => m.remetente === "cliente").slice(-1).length
-      : 0;
-  };
+      const aTime = a.mensagens.length > 0 
+        ? a.mensagens[a.mensagens.length - 1].timestamp.getTime() 
+        : a.criadoEm.getTime();
+      const bTime = b.mensagens.length > 0 
+        ? b.mensagens[b.mensagens.length - 1].timestamp.getTime() 
+        : b.criadoEm.getTime();
+      
+      return bTime - aTime;
+    });
+  }, [atendimentos]);
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
@@ -142,72 +111,14 @@ export function ConversationList({
           </div>
         ) : (
           <div>
-            {atendimentos.map((atd) => {
-              const isSelected = selectedId === atd.id;
-              const lastMsg = getLastMessage(atd);
-              const unread = getUnreadCount(atd);
-              const lastTime = atd.mensagens.length > 0
-                ? atd.mensagens[atd.mensagens.length - 1].timestamp
-                : atd.criadoEm;
-
-              return (
-                <div
-                  key={atd.id}
-                  onClick={() => onSelect(atd)}
-                  className={`flex items-start gap-3 px-3 py-3 cursor-pointer transition-colors border-l-2 ${
-                    isSelected
-                      ? "bg-primary/10 border-l-primary"
-                      : `border-l-transparent hover:bg-secondary/40`
-                  }`}
-                >
-                  {/* Avatar */}
-                  <div className="relative shrink-0">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold ${
-                      isSelected ? "bg-primary/30 text-primary" : "bg-secondary text-muted-foreground"
-                    }`}>
-                      {(atd.clienteNome || "??").substring(0, 2).toUpperCase()}
-                    </div>
-                    {atd.status !== "resolvido" && (
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
-                        atd.status === "aberto" ? "bg-yellow-500" : "bg-blue-500"
-                      }`} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm text-foreground truncate">
-                        {atd.clienteNome}
-                      </span>
-                      <span className={`text-[11px] shrink-0 ml-2 ${
-                        unread > 0 ? "text-primary font-medium" : "text-muted-foreground"
-                      }`}>
-                        {formatTime(lastTime)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <p className="text-xs text-muted-foreground truncate pr-2 flex items-center gap-1">
-                        {atd.mensagens.length > 0 && atd.mensagens[atd.mensagens.length - 1].remetente === "atendente" && (
-                          <CheckCheck className="w-3.5 h-3.5 text-primary shrink-0" />
-                        )}
-                        {lastMsg}
-                      </p>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {atd.origem && (
-                          <span className="text-[10px]">{origemIcons[atd.origem] || ""}</span>
-                        )}
-                        {unread > 0 && (
-                          <span className="w-4.5 h-4.5 min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                            {unread}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {sortedAtendimentos.map((atd) => (
+              <ConversationItem
+                key={atd.id}
+                atendimento={atd}
+                isSelected={selectedId === atd.id}
+                onSelect={onSelect}
+              />
+            ))}
           </div>
         )}
       </ScrollArea>

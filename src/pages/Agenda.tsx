@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,11 +62,15 @@ const timeSlots = [
 export default function Agenda() {
   const { agendamentos, isLoading, addAgendamento, updateAgendamento, deleteAgendamento, stats } = useAgenda();
   const { colaboradores } = useColaboradores();
-  const [viewMode, setViewMode] = useState<"dia" | "semana" | "mes">("semana");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [hasProcessedDeepLink, setHasProcessedDeepLink] = useState(false);
+  const [viewMode, setViewMode] = useState<"dia" | "semana" | "mes">("mes");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
+  const [viewingAgendamento, setViewingAgendamento] = useState<Agendamento & { link_imovel_interesse?: string; value?: number } | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [agendamentoToDelete, setAgendamentoToDelete] = useState<Agendamento | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedColaborador, setSelectedColaborador] = useState<string>("todos");
@@ -143,6 +148,24 @@ export default function Agenda() {
     setCurrentDate(new Date());
   };
 
+  // Process Deep Link
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id && !isLoading && agendamentos.length > 0 && !hasProcessedDeepLink) {
+      const ag = agendamentos.find(a => a.id === id);
+      if (ag) {
+        setCurrentDate(ag.data);
+        handleViewAppointment(ag);
+        setHasProcessedDeepLink(true);
+        
+        // Limpar o ID da URL de forma silenciosa
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete("id");
+        setSearchParams(newParams, { replace: true });
+      }
+    }
+  }, [searchParams, isLoading, agendamentos, hasProcessedDeepLink, setSearchParams]);
+
   // Filtrar agendamentos
   const filteredAgendamentos = useMemo(() => {
     return agendamentos.filter((ag) => {
@@ -216,27 +239,46 @@ export default function Agenda() {
     setIsModalOpen(true);
   };
 
-  const handleAgendamentoClick = async (agendamento: Agendamento, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingAgendamento(agendamento);
+  const handleViewAppointment = async (agendamento: Agendamento, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    let leadData = {
+      description: agendamento.observacoes,
+      link_imovel_interesse: "",
+      value: 0
+    };
 
-    let leadDescription = agendamento.observacoes;
     if (agendamento.lead_id) {
       try {
         const { data, error } = await supabase
           .from("leads")
-          .select("description")
+          .select("description, link_imovel_interesse, value")
           .eq("id", agendamento.lead_id)
           .single();
           
-        if (!error && data?.description) {
-          leadDescription = data.description;
+        if (!error && data) {
+          leadData = {
+            description: data.description || agendamento.observacoes,
+            link_imovel_interesse: data.link_imovel_interesse || "",
+            value: data.value || 0
+          };
         }
       } catch (err) {
         console.error("Erro ao buscar detalhes do lead", err);
       }
     }
 
+    setViewingAgendamento({
+      ...agendamento,
+      observacoes: leadData.description,
+      link_imovel_interesse: leadData.link_imovel_interesse,
+      value: leadData.value
+    });
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditAppointment = (agendamento: Agendamento) => {
+    setEditingAgendamento(agendamento);
     setFormData({
       clienteNome: agendamento.clienteNome,
       clienteTelefone: agendamento.clienteTelefone,
@@ -245,9 +287,10 @@ export default function Agenda() {
       horario: agendamento.horario,
       duracao: agendamento.duracao,
       servico: agendamento.servico || "Visita Imobiliária",
-      observacoes: leadDescription || "",
+      observacoes: agendamento.observacoes || "",
       status: agendamento.status,
     });
+    setIsViewModalOpen(false);
     setIsModalOpen(true);
   };
 
@@ -474,7 +517,7 @@ export default function Agenda() {
                             <div
                               key={ag.id}
                               className={cn("text-xs p-1 rounded mb-1 text-white group relative", getStatusColor(ag.status))}
-                              onClick={(e) => handleAgendamentoClick(ag, e)}
+                              onClick={(e) => handleViewAppointment(ag, e)}
                             >
                               <div className="font-medium truncate">{ag.clienteNome}</div>
                               <div className="opacity-80 truncate text-[10px]">{getColaboradorNome(ag.colaboradorId)}</div>
@@ -508,7 +551,7 @@ export default function Agenda() {
                         <span className={cn("text-sm", isSameDay(date, new Date()) ? "text-primary font-bold" : "text-foreground")}>{format(date, "d")}</span>
                         <div className="mt-1 space-y-1">
                           {dayAgendamentos.slice(0, 2).map(ag => (
-                            <div key={ag.id} className={cn("text-[10px] p-0.5 rounded text-white truncate", getStatusColor(ag.status))}>{ag.horario} {ag.clienteNome}</div>
+                            <div key={ag.id} className={cn("text-[10px] p-0.5 rounded text-white truncate hover:brightness-110", getStatusColor(ag.status))} onClick={(e) => { e.stopPropagation(); handleViewAppointment(ag, e); }}>{ag.horario} {ag.clienteNome}</div>
                           ))}
                           {dayAgendamentos.length > 2 && <div className="text-[10px] text-muted-foreground">+{dayAgendamentos.length - 2} mais</div>}
                         </div>
@@ -527,7 +570,7 @@ export default function Agenda() {
                     <div className="w-20 p-4 text-sm text-muted-foreground text-center border-r border-border">{time}</div>
                     <div className="flex-1 p-2 flex flex-wrap gap-2" onClick={() => handleCellClick(currentDate, time)}>
                       {items.map(ag => (
-                        <div key={ag.id} className={cn("p-3 rounded-lg text-white min-w-[200px] relative group", getStatusColor(ag.status))} onClick={(e) => handleAgendamentoClick(ag, e)}>
+                        <div key={ag.id} className={cn("p-3 rounded-lg text-white min-w-[200px] relative group cursor-pointer hover:shadow-lg transition-all", getStatusColor(ag.status))} onClick={(e) => handleViewAppointment(ag, e)}>
                           <p className="font-bold">{ag.clienteNome}</p>
                           <p className="text-xs opacity-90">{ag.servico || "Serviço Geral"}</p>
                           <p className="text-xs mt-1 border-t border-white/20 pt-1 flex items-center gap-1"><Users className="w-3 h-3" /> {getColaboradorNome(ag.colaboradorId)}</p>
@@ -598,12 +641,141 @@ export default function Agenda() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Detalhes (Visualização) */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-secondary border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className={cn("w-3 h-3 rounded-full", viewingAgendamento && getStatusColor(viewingAgendamento.status))} />
+              Detalhes da Visita
+            </DialogTitle>
+            <DialogDescription>
+              Informações completas do agendamento sincronizadas com o lead.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingAgendamento && (
+            <div className="grid gap-6 py-4">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-foreground mb-1">{viewingAgendamento.clienteNome}</h3>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="w-4 h-4 text-primary" />
+                    <span>{viewingAgendamento.clienteTelefone || "Não informado"}</span>
+                  </div>
+                </div>
+                <Badge className={cn("text-white capitalize", getStatusColor(viewingAgendamento.status))}>
+                  {viewingAgendamento.status}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="card-metric p-3 bg-background/50 border-border">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-bold">Data & Horário</p>
+                  <div className="flex items-center gap-2 font-medium">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    {format(viewingAgendamento.data, "dd/MM/yyyy", { locale: ptBR })}
+                  </div>
+                  <div className="text-sm mt-1 flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    {viewingAgendamento.horario} ({viewingAgendamento.duracao} min)
+                  </div>
+                </div>
+                <div className="card-metric p-3 bg-background/50 border-border">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-bold">Corretor</p>
+                  <div className="flex items-center gap-2 font-medium">
+                    <User className="w-4 h-4 text-primary" />
+                    {getColaboradorNome(viewingAgendamento.colaboradorId)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2 border-t border-border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Referência do Imóvel</p>
+                    <p className="font-medium text-foreground flex items-center gap-2">
+                      {viewingAgendamento.link_imovel_interesse ? (
+                        <a 
+                          href={viewingAgendamento.link_imovel_interesse} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          Ver Imóvel <Plus className="w-3 h-3 rotate-45" />
+                        </a>
+                      ) : (
+                        "Não vinculada"
+                      )}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Valor Estimado</p>
+                    <p className="text-lg font-bold text-success">
+                      {viewingAgendamento.value !== undefined && viewingAgendamento.value > 0 && (
+                        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(viewingAgendamento.value)
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {viewingAgendamento.observacoes && (
+                  <div className="space-y-1 bg-background/40 p-3 rounded-lg">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Observações / Perfil do Lead</p>
+                    <p className="text-sm text-foreground italic leading-relaxed">
+                      "{viewingAgendamento.observacoes}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <div className="flex justify-between w-full">
+              <Button 
+                variant="ghost" 
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => {
+                  if (viewingAgendamento) {
+                    setIsViewModalOpen(false);
+                    handleDeleteClick(viewingAgendamento, e);
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remover
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
+                  Fechar
+                </Button>
+                <Button 
+                  className="btn-primary" 
+                  onClick={() => viewingAgendamento && handleEditAppointment(viewingAgendamento)}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+              </div>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Excluir agendamento?</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação removerá permanentemente a visita do calendário e do banco de dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive" onClick={confirmDelete}>Excluir</AlertDialogAction>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90 text-white" onClick={confirmDelete}>
+              Confirmar Exclusão
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

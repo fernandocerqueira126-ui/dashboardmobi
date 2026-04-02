@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { useLeads } from "@/contexts/LeadsContext";
@@ -25,6 +25,7 @@ const Index = () => {
   const { leads, stats: leadsStats } = leadsCtx;
   const { proximosAgendamentos, stats: agendaStats } = useAgenda();
   const { stats: financeiroStats } = useFinanceiro();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   // Simulating loading state for polished demo
@@ -256,10 +257,11 @@ const Index = () => {
                   formattedAgendamentos.map((event, idx) => (
                     <div
                       key={event.id}
+                      onClick={() => navigate(`/agenda?id=${event.id}`)}
                       className={cn(
-                        "flex items-center justify-between p-3 rounded-xl transition-all duration-200 group",
+                        "flex items-center justify-between p-3 rounded-xl transition-all duration-200 group cursor-pointer",
                         idx % 2 === 0 ? "bg-transparent" : "bg-secondary/20",
-                        "hover:bg-primary/5 hover:translate-x-1"
+                        "hover:bg-primary/10 hover:translate-x-2 hover:shadow-md"
                       )}
                     >
                       <div className="flex items-center gap-3">

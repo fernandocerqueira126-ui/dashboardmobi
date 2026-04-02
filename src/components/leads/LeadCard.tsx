@@ -1,6 +1,10 @@
-import { Phone, Mail, DollarSign, Calendar, MessageCircle, Instagram } from "lucide-react";
+import React, { useMemo } from "react";
+import { Phone, Mail, DollarSign, Calendar, MessageCircle, Instagram, Clock } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useTime } from "@/contexts/TimeContext";
+import { formatDistance, parseISO, isValid } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface LeadCardProps {
   name: string;
@@ -27,12 +31,25 @@ export function LeadCard({
   isPaid = false,
   tags = [],
 }: LeadCardProps) {
+  const { currentTime } = useTime();
+  
   const initials = name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const relativeTime = useMemo(() => {
+    if (!date) return null;
+    try {
+      const leadDate = parseISO(date);
+      if (!isValid(leadDate)) return date;
+      return formatDistance(leadDate, currentTime, { addSuffix: true, locale: ptBR });
+    } catch (e) {
+      return date;
+    }
+  }, [date, currentTime]);
 
   return (
     <div className="lead-card space-y-3">
@@ -83,10 +100,10 @@ export function LeadCard({
         <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
       )}
 
-      {date && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>{date}</span>
+      {relativeTime && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <Clock className="w-3 h-3" />
+          <span className="capitalize">{relativeTime}</span>
         </div>
       )}
 

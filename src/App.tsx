@@ -12,6 +12,7 @@ import { ColaboradoresProvider } from "@/contexts/ColaboradoresContext";
 import { AgendaProvider } from "@/contexts/AgendaContext";
 import { FinanceiroProvider } from "@/contexts/FinanceiroContext";
 import { AtendimentosProvider } from "@/contexts/AtendimentosContext";
+import { TimeProvider } from "@/contexts/TimeContext";
 import Index from "./pages/Index";
 import LeadsCRM from "./pages/LeadsCRM";
 import ConfigKanban from "./pages/ConfigKanban";
@@ -28,6 +29,7 @@ import Cadastro from "./pages/Cadastro";
 import ResetPassword from "./pages/ResetPassword";
 import Perfil from "./pages/Perfil";
 import NotFound from "./pages/NotFound";
+import Proposta from "./pages/Proposta";
 
 const queryClient = new QueryClient();
 
@@ -52,23 +54,27 @@ const App = () => (
                         <AgendaProvider>
                           <FinanceiroProvider>
                             <AtendimentosProvider>
-                              <MainLayout>
-                                <Routes>
-                                  <Route path="/" element={<Index />} />
-                                  <Route path="/leads" element={<LeadsCRM />} />
-                                  <Route path="/leads/config" element={<ConfigKanban />} />
-                                  <Route path="/agenda" element={<Agenda />} />
-                                  <Route path="/clientes" element={<Clientes />} />
-                                  <Route path="/colaboradores" element={<Colaboradores />} />
-                                  <Route path="/atendimentos" element={<Atendimentos />} />
-                                  <Route path="/financeiro" element={<Financeiro />} />
-                                  <Route path="/relatorios" element={<Relatorios />} />
-                                  <Route path="/automacao" element={<Automacao />} />
-                                  <Route path="/notificacoes" element={<Notificacoes />} />
-                                  <Route path="/perfil" element={<Perfil />} />
-                                  <Route path="*" element={<NotFound />} />
-                                </Routes>
-                              </MainLayout>
+                              <TimeProvider>
+                                <MainLayout>
+                                  <Routes>
+                                    <Route path="/" element={<Index />} />
+                                    <Route path="/leads" element={<LeadsCRM />} />
+                                    <Route path="/leads/config" element={<ConfigKanban />} />
+                                    <Route path="/proposta" element={<Proposta />} />
+                                    <Route path="/proposta/:id" element={<Proposta />} />
+                                    <Route path="/agenda" element={<Agenda />} />
+                                    <Route path="/clientes" element={<Clientes />} />
+                                    <Route path="/colaboradores" element={<Colaboradores />} />
+                                    <Route path="/atendimentos" element={<Atendimentos />} />
+                                    <Route path="/financeiro" element={<Financeiro />} />
+                                    <Route path="/relatorios" element={<Relatorios />} />
+                                    <Route path="/automacao" element={<Automacao />} />
+                                    <Route path="/notificacoes" element={<Notificacoes />} />
+                                    <Route path="/perfil" element={<Perfil />} />
+                                    <Route path="*" element={<NotFound />} />
+                                  </Routes>
+                                </MainLayout>
+                              </TimeProvider>
                             </AtendimentosProvider>
                           </FinanceiroProvider>
                         </AgendaProvider>

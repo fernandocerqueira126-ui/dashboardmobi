@@ -1,11 +1,18 @@
 import React, { createContext, useContext, useState, useMemo, ReactNode, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
+import { Database, Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { useNotifications } from "./NotificationsContext";
 
 type AtendimentoRow = Database['public']['Tables']['atendimentos']['Row'];
 type MensagemRow = Database['public']['Tables']['mensagens']['Row'];
+
+export interface AgentMetadata {
+  status?: string;
+  node?: string;
+  thread_id?: string;
+  [key: string]: Json | undefined;
+}
 
 export interface Atendimento {
   id: string;
@@ -20,6 +27,7 @@ export interface Atendimento {
   origem: string | null;
   criadoEm: Date;
   atualizadoEm: Date;
+  metadata?: AgentMetadata | null;
   mensagens: Mensagem[];
 }
 
@@ -73,6 +81,7 @@ const mapRowToAtendimento = (row: AtendimentoRow, mensagens: MensagemRow[] = [])
   origem: row.origem,
   criadoEm: new Date(row.created_at),
   atualizadoEm: new Date(row.updated_at),
+  metadata: (row as any).metadata,
   mensagens: mensagens.map(m => ({
     id: m.id,
     texto: m.texto,
@@ -87,7 +96,7 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const { addNotification } = useNotifications();
 
-  const fetchAtendimentos = async () => {
+  const fetchAtendimentos = React.useCallback(async () => {
     setIsLoading(true);
     try {
       const { data: atendimentosData, error: atdError } = await supabase
@@ -97,7 +106,7 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
       if (atdError) throw atdError;
 
       const formatted = (atendimentosData || []).map(row =>
-        mapRowToAtendimento(row, (row as any).mensagens)
+        mapRowToAtendimento(row as any, (row as any).mensagens)
       );
 
       setAtendimentos(formatted);
@@ -107,24 +116,75 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAtendimentos();
 
+    // Combined channel for all table changes
     const channel = supabase
-      .channel('atendimentos-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, () => {
-        fetchAtendimentos();
-      })
+      .channel('atendimentos-realtime-master')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'atendimentos' }, 
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newItem = mapRowToAtendimento(payload.new as AtendimentoRow);
+            setAtendimentos(prev => [newItem, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedRow = payload.new as AtendimentoRow;
+            setAtendimentos(prev => prev.map(atd => {
+              if (atd.id === updatedRow.id) {
+                const mapped = mapRowToAtendimento(updatedRow);
+                return { ...mapped, mensagens: atd.mensagens }; // Preserve messages
+              }
+              return atd;
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            setAtendimentos(prev => prev.filter(atd => atd.id !== payload.old.id));
+          }
+        }
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mensagens' },
+        (payload) => {
+          const newMsg: Mensagem = {
+            id: payload.new.id,
+            texto: payload.new.texto,
+            remetente: payload.new.remetente as "cliente" | "atendente",
+            timestamp: new Date(payload.new.created_at)
+          };
+
+          setAtendimentos(prev => {
+            const exists = prev.some(atd => atd.id === payload.new.atendimento_id);
+            if (!exists) {
+              // If the atendimento doesn't exist in local state yet, 
+              // it might have been created by another process. Fetch all.
+              fetchAtendimentos();
+              return prev;
+            }
+
+            return prev.map(atd => {
+              if (atd.id === payload.new.atendimento_id) {
+                if (atd.mensagens.some(m => m.id === newMsg.id)) return atd;
+                return {
+                  ...atd,
+                  mensagens: [...atd.mensagens, newMsg],
+                  atualizadoEm: new Date()
+                };
+              }
+              return atd;
+            });
+          });
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchAtendimentos]);
 
-  const addAtendimento = async (data: AtendimentoInput) => {
+  const addAtendimento = React.useCallback(async (data: AtendimentoInput) => {
     try {
       const { error } = await supabase
         .from('atendimentos')
@@ -145,17 +205,16 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
         message: `Atendimento criado para ${data.clienteNome}`,
         type: "info",
       });
-
-      fetchAtendimentos();
+      // fetchAtendimentos is now handled by Realtime INSERT
     } catch (error) {
       console.error("Erro ao criar atendimento:", error);
       toast.error("Erro ao salvar atendimento.");
     }
-  };
+  }, [addNotification]);
 
-  const updateAtendimento = async (id: string, data: Partial<Atendimento>) => {
+  const updateAtendimento = React.useCallback(async (id: string, data: Partial<Atendimento>) => {
     try {
-      const updates: any = {};
+      const updates: Partial<AtendimentoRow> = {};
       if (data.status) updates.status = data.status;
       if (data.prioridade) updates.prioridade = data.prioridade;
       if (data.colaborador !== undefined) updates.colaborador = data.colaborador;
@@ -175,23 +234,23 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
           type: "success",
         });
       }
-      fetchAtendimentos();
+      // fetchAtendimentos is now handled by Realtime UPDATE
     } catch (error) {
       console.error("Erro ao atualizar:", error);
     }
-  };
+  }, [addNotification]);
 
-  const deleteAtendimento = async (id: string) => {
+  const deleteAtendimento = React.useCallback(async (id: string) => {
     try {
       const { error } = await supabase.from('atendimentos').delete().eq('id', id);
       if (error) throw error;
-      fetchAtendimentos();
+      // fetchAtendimentos is now handled by Realtime DELETE
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const addMensagem = async (atendimentoId: string, mensagem: Omit<Mensagem, "id" | "timestamp">) => {
+  const addMensagem = React.useCallback(async (atendimentoId: string, mensagem: Omit<Mensagem, "id" | "timestamp">) => {
     try {
       const { error } = await supabase
         .from('mensagens')
@@ -202,15 +261,15 @@ export function AtendimentosProvider({ children }: { children: ReactNode }) {
         }]);
 
       if (error) throw error;
-      fetchAtendimentos();
+      // fetchAtendimentos is now handled by Realtime INSERT on table mensagens
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
     }
-  };
+  }, []);
 
-  const getAtendimentosByCliente = (clienteId: string) => {
+  const getAtendimentosByCliente = React.useCallback((clienteId: string) => {
     return atendimentos.filter(atd => atd.clienteId === clienteId);
-  };
+  }, [atendimentos]);
 
   const stats = useMemo(() => {
     const abertos = atendimentos.filter(a => a.status === "aberto").length;

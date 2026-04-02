@@ -172,6 +172,17 @@ export function ChatPanel({
           </DropdownMenu>
         </div>
       </div>
+      
+      {atendimento.metadata?.status && (
+        <div className="absolute top-[60px] left-0 right-0 z-30 flex justify-center pointer-events-none animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-background/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-green-500/30 shadow-lg flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            <span className="text-[11px] font-medium text-foreground/80 tracking-tight lowercase first-letter:uppercase">
+              {atendimento.metadata.status}...
+            </span>
+          </div>
+        </div>
+      )}
 
       <ScrollArea
         className="flex-1"

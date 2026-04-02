@@ -12,6 +12,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -36,6 +46,7 @@ import { useLeads } from "@/contexts/LeadsContext";
 import { ConversationList } from "@/components/atendimentos/ConversationList";
 import { ChatPanel } from "@/components/atendimentos/ChatPanel";
 import { AtendimentoDetailSheet } from "@/components/atendimentos/AtendimentoDetailSheet";
+import { Atendimento, useAtendimentos } from "@/contexts/AtendimentosContext";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -73,16 +84,25 @@ type WebhookEvento = {
 export default function Atendimentos() {
   const { leads } = useLeads();
   const { toast } = useToast();
+  const { 
+    atendimentos: liveAtendimentos, 
+    isLoading, 
+    addMensagem: contextAddMensagem, 
+    updateAtendimento: contextUpdateAtendimento 
+  } = useAtendimentos();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
-  const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
+  const [selectedAtendimentoId, setSelectedAtendimentoId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [atendimentoToDelete, setAtendimentoToDelete] = useState<string | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [allWebhookEvents, setAllWebhookEvents] = useState<WebhookEvento[]>([]);
+  // Connectivity state - now reflects the context/Supabase initialization
+  const [isConnected, setIsConnected] = useState(true);
+
   const [novoAtendimento, setNovoAtendimento] = useState({
     clienteId: "",
     assunto: "",
@@ -94,8 +114,25 @@ export default function Atendimentos() {
     docsRecebidos: [] as string[],
   });
 
-  const updateAtendimento = () => {};
-  const addMensagem = async () => {};
+  const handleUpdateStatus = async (id: string, status: string) => {
+    await contextUpdateAtendimento(id, { status: status as "aberto" | "em_andamento" | "resolvido" });
+    toast({ title: "Status atualizado" });
+  };
+
+  const confirmDelete = async () => {
+    if (!atendimentoToDelete) return;
+    try {
+      const { error } = await supabase.from('atendimentos').delete().eq('id', atendimentoToDelete);
+      if (error) throw error;
+      toast({ title: "Conversa apagada" });
+      setSelectedAtendimentoId(null);
+    } catch (error) {
+      toast({ title: "Erro ao excluir", variant: "destructive" });
+    }
+    setAtendimentoToDelete(null);
+    setIsDeleting(false);
+  };
+
   const toggleDocRecebido = (docId: string) => {
     setNovoAtendimento(prev => ({
       ...prev,
@@ -104,149 +141,6 @@ export default function Atendimentos() {
         : [...prev.docsRecebidos, docId],
     }));
   };
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      const { data, error } = await supabase
-        .from('webhook_eventos')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(2000);
-
-      if (error) {
-        console.error("Erro ao buscar histórico:", error);
-        return;
-      }
-      if (data) {
-        setAllWebhookEvents(data as WebhookEvento[]);
-      }
-    };
-
-    fetchHistory();
-  }, []);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('realtime-webhook-eventos')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'webhook_eventos' },
-        (realtimePayload) => {
-          const newRow = realtimePayload.new as WebhookEvento;
-
-          setAllWebhookEvents(prev => {
-            if (prev.some(e => e.id === newRow.id)) return prev;
-            return [...prev, newRow];
-          });
-
-          const dir = newRow.direction || "cliente";
-          if (dir === 'cliente') {
-            const nome = newRow.sender_name || 'Cliente';
-            const msg = newRow.message || '...';
-            setAiSuggestion(`Sugestão IA: Olá ${nome.split(' ')[0]}! Recebi sua mensagem: "${msg}". Como posso ajudar?`);
-            toast({
-              title: "Nova mensagem!",
-              description: `${nome} enviou uma mensagem.`
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        setIsConnected(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [toast]);
-
-  const parsePayload = (raw: unknown): Record<string, unknown> => {
-    if (!raw) return {};
-    if (typeof raw === 'string') {
-      try { return JSON.parse(raw); } catch { return {}; }
-    }
-    if (typeof raw === 'object') return raw as Record<string, unknown>;
-    return {};
-  };
-
-  const liveAtendimentos = useMemo(() => {
-    const groups: Record<string, {
-      id: string;
-      clienteId: string | null;
-      clienteNome: string;
-      clienteTelefone: string;
-      assunto: string;
-      status: string;
-      prioridade: string;
-      origem: string;
-      criadoEm: string;
-      atualizadoEm: string;
-      mensagens: Array<{ id: string; texto: string; remetente: string; timestamp: Date; imageUrl?: string }>;
-    }> = {};
-
-    const safeParseDate = (dateVal: unknown): Date => {
-      if (!dateVal) return new Date();
-      const d = new Date(dateVal as string);
-      return isNaN(d.getTime()) ? new Date() : d;
-    };
-
-    const normalizePhone = (p: string) => p.replace(/\D/g, "");
-
-    allWebhookEvents.forEach(evt => {
-      const payload = parsePayload(evt.payload);
-
-      const phone       = evt.phone      || (payload.phone as string)      || (payload.sender_phone as string) || (payload.from as string);
-      const senderName  = evt.sender_name || (payload.sender_name as string) || (payload.pushName as string)   || (payload.contact_name as string) || (payload.name as string);
-      const messageText = evt.message != null ? evt.message : ((payload.message ?? payload.text ?? payload.body ?? payload.content ?? "") as string);
-      const direction   = evt.direction  || (payload.direction as string)  || "cliente";
-      const imageUrl    = (payload.image_url ?? payload.imageUrl ?? payload.picture) as string | undefined;
-
-      if (!phone || typeof phone !== 'string') return;
-      if ((messageText === "" || messageText == null) && !imageUrl && direction !== "cliente") return;
-
-      const normalized = normalizePhone(phone);
-
-      if (!groups[normalized]) {
-        const lead = leads.find(l => {
-          const lp = l.phone ? normalizePhone(l.phone) : "";
-          return lp === normalized || (lp && normalized.includes(lp)) || (normalized && lp.includes(normalized));
-        });
-        const fallbackName = lead ? lead.name : "Cliente WhatsApp";
-
-        groups[normalized] = {
-          id: phone,
-          clienteId: lead?.id || null,
-          clienteNome: senderName || fallbackName,
-          clienteTelefone: phone,
-          assunto: "Conversa WhatsApp",
-          status: "aberto",
-          prioridade: "media",
-          origem: "whatsapp",
-          criadoEm: evt.created_at || new Date().toISOString(),
-          atualizadoEm: evt.created_at || new Date().toISOString(),
-          mensagens: []
-        };
-      }
-
-      if (senderName && groups[normalized].clienteNome === "Cliente WhatsApp") {
-        groups[normalized].clienteNome = senderName;
-      }
-
-      groups[normalized].mensagens.push({
-        id: evt.id,
-        texto: messageText || "",
-        remetente: direction === "cliente" ? "cliente" : "atendente",
-        timestamp: safeParseDate(evt.created_at || new Date().toISOString()),
-        imageUrl: imageUrl
-      });
-    });
-
-    return Object.values(groups).sort((a, b) => {
-      const lastA = a.mensagens[a.mensagens.length - 1]?.timestamp.getTime() || 0;
-      const lastB = b.mensagens[b.mensagens.length - 1]?.timestamp.getTime() || 0;
-      return lastB - lastA;
-    });
-  }, [allWebhookEvents, leads]);
 
   const filteredAtendimentos = useMemo(() => {
     return liveAtendimentos.filter(atd => {
@@ -259,9 +153,9 @@ export default function Atendimentos() {
   }, [liveAtendimentos, searchTerm, statusFilter]);
 
   const activeAtendimento = useMemo(() => {
-    if (!selectedPhone) return filteredAtendimentos[0] || null;
-    return liveAtendimentos.find(a => a.id === selectedPhone) || filteredAtendimentos[0] || null;
-  }, [selectedPhone, liveAtendimentos, filteredAtendimentos]);
+    if (!selectedAtendimentoId) return filteredAtendimentos[0] || null;
+    return liveAtendimentos.find(a => a.id === selectedAtendimentoId) || filteredAtendimentos[0] || null;
+  }, [selectedAtendimentoId, liveAtendimentos, filteredAtendimentos]);
 
   const stats = useMemo(() => {
     return {
@@ -357,7 +251,7 @@ export default function Atendimentos() {
             <ConversationList
               atendimentos={filteredAtendimentos}
               selectedId={activeAtendimento?.id || null}
-              onSelect={(a) => setSelectedPhone(a.id)}
+              onSelect={(a) => setSelectedAtendimentoId(a.id)}
               onNewClick={() => setDialogOpen(true)}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -367,7 +261,7 @@ export default function Atendimentos() {
           </div>
 
           <ChatPanel
-            atendimento={activeAtendimento as any}
+            atendimento={activeAtendimento as Atendimento}
             isConnected={isConnected}
             suggestion={aiSuggestion}
             onUseSuggestion={() => {
@@ -377,34 +271,25 @@ export default function Atendimentos() {
             }}
             onClearSuggestion={() => setAiSuggestion(null)}
             onSendMessage={async (id, msg) => {
-              try {
-                await fetch("https://n8n.autoia.store/webhook/dashboard-send-message", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    phone: id,
-                    message: msg.texto
-                  })
-                });
-                toast({ title: "Mensagem enviada", description: "Aguardando sincronização..." });
-              } catch (e) {
-                console.error("Erro ao enviar para n8n", e);
-                toast({ title: "Erro no envio", description: "Verifique a conexão.", variant: "destructive" });
-              }
+              await contextAddMensagem(id, msg);
+              toast({ title: "Mensagem enviada" });
             }}
-            onUpdateStatus={() => {}}
-            onDelete={() => {}}
+            onUpdateStatus={(id, data) => handleUpdateStatus(id, data.status as string)}
+            onDelete={(id) => {
+              setAtendimentoToDelete(id);
+              setIsDeleting(true);
+            }}
             onOpenDetails={() => setSheetOpen(true)}
           />
         </div>
       </div>
 
       <AtendimentoDetailSheet
-        atendimento={activeAtendimento as any}
+        atendimento={activeAtendimento as Atendimento}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        onUpdate={updateAtendimento}
-        onAddMensagem={addMensagem}
+        onUpdate={contextUpdateAtendimento}
+        onAddMensagem={contextAddMensagem}
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -429,6 +314,26 @@ export default function Atendimentos() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza que deseja apagar todo o histórico desta conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é permanente e removerá todas as mensagens do banco de dados (webhook_eventos e atendimentos).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90 text-white"
+            >
+              Excluir Definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

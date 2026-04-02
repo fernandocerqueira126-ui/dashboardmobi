@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ const menuGroups = [
       { icon: Users, label: "Leads CRM", path: "/leads" },
       { icon: Calendar, label: "Visitas Agendadas", path: "/agenda" },
       { icon: Headphones, label: "Atendimentos", path: "/atendimentos" },
+      { icon: FileText, label: "Criar Proposta", path: "/proposta" },
     ]
   },
   {

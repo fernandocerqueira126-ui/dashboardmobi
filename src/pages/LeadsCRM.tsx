@@ -201,11 +201,9 @@ function DraggableLeadCard({
         </p>
       )}
       
-      {lead.linkImovelInteresse && (
-        <p className="text-[10px] text-primary/80 font-medium truncate mt-0.5">
-          Ref: {lead.linkImovelInteresse}
-        </p>
-      )}
+      <p className="text-[10px] text-primary/80 font-medium truncate mt-0.5">
+        Ref: {lead.linkImovelInteresse || "Não inf."}
+      </p>
 
 
       <div className="flex items-center justify-between mt-2">
@@ -337,6 +335,8 @@ function LeadDetailSheet({
   onMove,
   onConvert,
   onDelete,
+  onCreateProposal,
+  onGoToAtendimento,
 }: {
   lead: Lead | null;
   open: boolean;
@@ -345,6 +345,8 @@ function LeadDetailSheet({
   onMove: (lead: Lead) => void;
   onConvert: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
+  onCreateProposal?: (lead: Lead) => void;
+  onGoToAtendimento?: (lead: Lead) => void;
 }) {
   const { columns } = useLeads();
 
@@ -409,18 +411,21 @@ function LeadDetailSheet({
         {/* Real Estate Info */}
         <div className="py-4 space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Imóvel de Interesse</h4>
-          {lead.value !== undefined && (
-            <div className="flex items-center gap-3 text-sm">
-              <DollarSign className="w-4 h-4 text-warning" />
-              <span>Valor estimado: <span className="font-medium text-warning">{Number(lead.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></span>
-            </div>
-          )}
-          {lead.linkImovelInteresse && (
-            <div className="flex items-center gap-3 text-sm">
-              <Home className="w-4 h-4 text-primary" />
-              <span>Referência: <span className="font-medium text-primary">{lead.linkImovelInteresse}</span></span>
-            </div>
-          )}
+          
+          <div className="flex items-center gap-3 text-sm">
+            <DollarSign className="w-4 h-4 text-warning" />
+            <span>Valor estimado: <span className="font-medium text-warning text-base">
+              {lead.value !== undefined ? Number(lead.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "Não informado"}
+            </span></span>
+          </div>
+
+          <div className="flex items-center gap-3 text-sm">
+            <Home className="w-4 h-4 text-primary" />
+            <span>Referência: <span className="font-medium text-primary">
+              {lead.linkImovelInteresse || "Não informada"}
+            </span></span>
+          </div>
+
           {lead.paidValue !== undefined && lead.paidValue > 0 && (
             <div className="flex items-center gap-3 text-sm">
               <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -463,26 +468,59 @@ function LeadDetailSheet({
           </>
         )}
 
-        {/* Actions */}
-        <div className="py-4 grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { onOpenChange(false); onEdit(lead); }}>
-            <Pencil className="w-3.5 h-3.5" />
-            Editar
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { onOpenChange(false); onMove(lead); }}>
-            <ArrowRight className="w-3.5 h-3.5" />
-            Mover
-          </Button>
-          {lead.status !== "ganho" && (
-            <Button variant="outline" size="sm" className="gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10" onClick={() => { onOpenChange(false); onConvert(lead); }}>
-              <UserCheck className="w-3.5 h-3.5" />
-              Converter
+        {/* Actions - Grid 2x3 */}
+        <div className="py-4 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            {/* Row 1 */}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { onOpenChange(false); onEdit(lead); }}>
+              <Pencil className="w-3.5 h-3.5" />
+              Editar
             </Button>
-          )}
-          <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => { onOpenChange(false); onDelete(lead); }}>
-            <Trash2 className="w-3.5 h-3.5" />
-            Excluir
-          </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { onOpenChange(false); onMove(lead); }}>
+              <ArrowRight className="w-3.5 h-3.5" />
+              Mover
+            </Button>
+
+            {/* Row 2 */}
+            <Button 
+              size="sm" 
+              className="gap-1.5 bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white border-0" 
+              onClick={() => { onOpenChange(false); onCreateProposal?.(lead); }}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Criar Proposta
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-1.5 bg-[#8B5CF6] hover:bg-[#8B5CF6]/90 text-white border-0" 
+              onClick={() => { onOpenChange(false); onGoToAtendimento?.(lead); }}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Ir para Atendimento
+            </Button>
+
+            {/* Row 3 */}
+            {lead.status !== "ganho" ? (
+              <Button 
+                size="sm" 
+                className="gap-1.5 bg-[#10B981] hover:bg-[#10B981]/90 text-white border-0" 
+                onClick={() => { onOpenChange(false); onConvert(lead); }}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                Converter
+              </Button>
+            ) : (
+              <div /> // Placeholder to maintain grid
+            )}
+            <Button 
+              size="sm" 
+              className="gap-1.5 bg-[#EF4444] hover:bg-[#EF4444]/90 text-white border-0" 
+              onClick={() => { onOpenChange(false); onDelete(lead); }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Excluir
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
@@ -786,6 +824,8 @@ export default function LeadsCRM() {
         onMove={(l) => { setLeadToMove(l); setIsMoveDialogOpen(true); }}
         onConvert={(l) => { setLeadToConvert(l); setIsConvertDialogOpen(true); }}
         onDelete={(l) => { setLeadToDelete(l); setIsDeleteDialogOpen(true); }}
+        onCreateProposal={(l) => navigate(`/proposta/${l.id}`)}
+        onGoToAtendimento={(l) => navigate(`/atendimentos?phone=${encodeURIComponent(l.phone || '')}`)}
       />
 
       {/* Create/Edit Lead Modal */}
